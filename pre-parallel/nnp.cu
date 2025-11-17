@@ -85,7 +85,7 @@ void train_model(MODEL* model){
     cudaMemcpy(d_W2, model->W2, H1*H2*sizeof(float), cudaMemcpyHostToDevice); cudaMemcpy(d_b2, model->b2, H2*sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(d_W3, model->W3, H2*CLASSES*sizeof(float), cudaMemcpyHostToDevice); cudaMemcpy(d_b3, model->b3, CLASSES*sizeof(float), cudaMemcpyHostToDevice);
 
-    dim3 threadsPerBlock(32, 32);
+    dim3 threadsPerBlock(1024, 1); 
     dim3 blocksPerGrid((H1 + threadsPerBlock.x - 1) / threadsPerBlock.x, (SIZE + threadsPerBlock.y - 1) / threadsPerBlock.y);
     for (int epoch=0; epoch<EPOCHS; epoch++) {
         float loss=0;
