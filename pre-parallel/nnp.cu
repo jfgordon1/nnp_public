@@ -88,7 +88,7 @@ void train_model(MODEL* model){
     dim3 threadsPerBlock(1024, 1); 
     dim3 blocksPerGrid((H1 + threadsPerBlock.x - 1) / threadsPerBlock.x, (SIZE + threadsPerBlock.y - 1) / threadsPerBlock.y);
 
-    kernelFull<<<blocksPerGrid, threadsPerBlock>>(d_W1, d_b1, d_W2, d_b2, d_W3, d_b3, train_data[n], train_label[n]);
+    kernelFull<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_b1, d_W2, d_b2, d_W3, d_b3, train_data, train_label);
     
     for (int epoch=0; epoch<EPOCHS; epoch++) {
         float loss=0;
