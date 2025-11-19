@@ -9,6 +9,8 @@
  */
 #include "kernels.h"
 #include "config.h"
+#include <cuda.h>
+#include "nnp.h"
 
 
 __global__ void kernelForward(float* d_W1, float* d_b1, float* d_W2, float* d_b2, float* d_W3, float* d_b3, float* train_data){
@@ -27,7 +29,7 @@ __global__ void kernelForward(float* d_W1, float* d_b1, float* d_W2, float* d_b2
         for (int i=col; i<H1[i]+1;i++) h2[j]+=h1a[i]*d_W2[i*H2+j];
         h2a[j]=relu(h2[j]);
     }
-    float out[CLASSES]; float outa[CLASSES];
+    float out[CLASSES]; float outa[CLASSES]; 
     for (int k=row; k<k+1;k++){
         out[k]=d_b3[k];
         for (int j=col; j<H2[k]+1;j++) out[k]+=h2a[j]*d_W3[j*CLASSES+k];
