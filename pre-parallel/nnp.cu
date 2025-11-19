@@ -87,12 +87,15 @@ void train_model(MODEL* model){
 
     dim3 threadsPerBlock(1024, 1); 
     dim3 blocksPerGrid((H1 + threadsPerBlock.x - 1) / threadsPerBlock.x, (SIZE + threadsPerBlock.y - 1) / threadsPerBlock.y);
+
+    kernelFull<<<blocksPerGrid, threadsPerBlock>>(d_W1, d_b1, d_W2, d_b2, d_W3, d_b3, train_data[n], train_label[n]);
+    
     for (int epoch=0; epoch<EPOCHS; epoch++) {
         float loss=0;
         for (int n=0; n<NUM_TRAIN; n++) {
             // ---------- Forward ----------
 
-            kernelForward<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_b1, d_W2, d_b2, d_W3, d_b3, train_data[n]);
+            // kernelForward<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_b1, d_W2, d_b2, d_W3, d_b3, train_data[n]);
             
             float h1[H1], h1a[H1];
             for (int j=0;j<H1;j++){
@@ -115,7 +118,7 @@ void train_model(MODEL* model){
 
             // ---------- Loss ----------
 
-            kernelLoss<<<blocksPerGrid, threadsPerBlock>>>(loss, train_label[n], outa);
+            // kernelLoss<<<blocksPerGrid, threadsPerBlock>>>(loss, train_label[n], outa);
 
             for (int k=0;k<CLASSES;k++)
                 loss -= train_label[n][k]*logf(outa[k]+1e-8f);
@@ -123,7 +126,7 @@ void train_model(MODEL* model){
 
             // ---------- Backprop ----------
 
-            kernelBackprop<<<blocksPerGrid, threadsPerBlock>>>(outa, d_W2, d_W3, train_label[n]);
+            // kernelBackprop<<<blocksPerGrid, threadsPerBlock>>>(outa, d_W2, d_W3, train_label[n]);
 
             float delta3[CLASSES];
             for (int k=0;k<CLASSES;k++)
@@ -145,7 +148,7 @@ void train_model(MODEL* model){
 
             // ---------- Update ----------
 
-            kernelUpdate<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_W2, d_W3, d_b1, d_b2, d_b3, train_data[n]);
+            // kernelUpdate<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_W2, d_W3, d_b1, d_b2, d_b3, train_data[n]);
 
             for (int j=0;j<H2;j++)
                 for (int k=0;k<CLASSES;k++)
