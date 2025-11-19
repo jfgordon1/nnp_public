@@ -15,24 +15,24 @@ __global__ void kernelForward(float* d_W1, float* d_b1, float* d_W2, float* d_b2
     int row = blockIdx.y * blockDim.y + threadIdx.y;
     int col = blockIdx.x * blockDim.x + threadIdx.x;
 
-    float h1[H1]; float h1a[H1];
+    float h1[256]; float h1a[256];
     for (int j=row; j<row+1;j++){
         h1[j]=d_b1[j];
-        for (int i=col; i<col+1;i++) h1[j]+=train_data[i]*d_W1[i*H1+j];
-        h1a[j]=relu(h1[j]);
+        for (int i=col; i<col+1;i++) h1[j]+=train_data[i]*d_W1[i*256+j];
+        h1a[j]=(h1[j] > 0 ? h1[j] : 0 );
     }
-    float h2[H2]; float h2a[H2];
-    for (int j=row; j<j+1;j++){
+    float h2[128]; float h2a[128];
+    for (int j=row; j<row+1;j++){
         h2[j]=d_b2[j];
-        for (int i=col; i<H1[i]+1;i++) h2[j]+=h1a[i]*d_W2[i*H2+j];
-        h2a[j]=relu(h2[j]);
+        for (int i=col; i<col+1;i++) h2[j]+=h1a[i]*d_W2[i*128+j];
+        h2a[j]=(h2[j] > 0 ? h2[j] : 0 );
     }
-    float out[CLASSES]; float outa[CLASSES];
-    for (int k=row; k<k+1;k++){
+    float out[10]; float outa[10];
+    for (int k=row; k<row+1;k++){
         out[k]=d_b3[k];
-        for (int j=col; j<H2[k]+1;j++) out[k]+=h2a[j]*d_W3[j*CLASSES+k];
+        for (int j=col; j<col+1;j++) out[k]+=h2a[j]*d_W3[j*10+k];
     }
-    softmax(out,outa,CLASSES);
+    softmax(out,outa,10);
 }
 
 
