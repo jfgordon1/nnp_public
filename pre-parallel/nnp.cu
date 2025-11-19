@@ -120,6 +120,7 @@ void train_model(MODEL* model){
             for (int k=0;k<CLASSES;k++)
                 loss -= train_label[n][k]*logf(outa[k]+1e-8f);
 
+
             // ---------- Backprop ----------
 
             kernelBackprop<<<blocksPerGrid, threadsPerBlock>>>(outa, d_W2, d_W3, train_label[n]);
@@ -144,7 +145,7 @@ void train_model(MODEL* model){
 
             // ---------- Update ----------
 
-            kernelUpdate<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_W2, d_W3, train_data[n]);
+            kernelUpdate<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_W2, d_W3, d_b1, d_b2, d_b3, train_data[n]);
 
             for (int j=0;j<H2;j++)
                 for (int k=0;k<CLASSES;k++)
