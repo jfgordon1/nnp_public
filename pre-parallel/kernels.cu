@@ -8,6 +8,7 @@
  *     __global__ void test_kernel(){}
  */
 #include "kernels.h"
+#include "config.h"
 
 
 __global__ void kernelForward(float* d_W1, float* d_b1, float* d_W2, float* d_b2, float* d_W3, float* d_b3, float* train_data){
