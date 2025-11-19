@@ -30,7 +30,7 @@
 * Returns:
 *   activated value based on ReLU function 
 */
-float relu(float x) { return x > 0 ? x : 0; }
+//float relu(float x) { return x > 0 ? x : 0; }
 
 /* Derivative of ReLU activation function
 * Arguments:
@@ -93,7 +93,7 @@ void train_model(MODEL* model){
             // ---------- Forward ----------
 
             kernelForward<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_b1, d_W2, d_b2, d_W3, d_b3, train_data[n]);
-            
+            /*
             float h1[H1], h1a[H1];
             for (int j=0;j<H1;j++){
                 h1[j]=model->b1[j];
@@ -112,7 +112,7 @@ void train_model(MODEL* model){
                 for (int j=0;j<H2;j++) out[k]+=h2a[j]*model->W3[j*CLASSES+k];
             }
             softmax(out,outa,CLASSES);
-
+`           */
             // ---------- Loss ----------
             for (int k=0;k<CLASSES;k++)
                 loss -= train_label[n][k]*logf(outa[k]+1e-8f);

@@ -21,13 +21,14 @@ __global__ void kernelForward(float* d_W1, float* d_b1, float* d_W2, float* d_b2
     for (int j=row; j<row+1;j++){
         h1[j]=d_b1[j];
         for (int i=col; i<col+1;i++) h1[j]+=train_data[i]*d_W1[i*H1+j];
-        h1a[j]=relu(h1[j]);
+        h1a[j]= h1[j] > 0 ? h1[j] : 0;
+        
     }
     float h2[H2]; float h2a[H2];
     for (int j=row; j<j+1;j++){
         h2[j]=d_b2[j];
         for (int i=col; i<H1[i]+1;i++) h2[j]+=h1a[i]*d_W2[i*H2+j];
-        h2a[j]=relu(h2[j]);
+        h2a[j]= h2[j] > 0 ? h12[j] : 0;
     }
     float out[CLASSES]; float outa[CLASSES]; 
     for (int k=row; k<k+1;k++){
