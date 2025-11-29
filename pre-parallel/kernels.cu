@@ -88,6 +88,22 @@
 //     for (int j=0;j<256;j++) d_b1[j]+=0.01*delta1[j];
 // }
 
+__device__ float relu(float x) {
+    return x > 0 ? x : 0;
+}
+
+__device__ float drelu(float x) {
+    return x > 0 ? 1.0f : 0.0f;
+}
+
+__device__ void softmax(float *z, float *out, int len) {
+    float max = z[0];
+    for (int i=1;i<len;i++) if (z[i]>max) max=z[i];
+    float sum=0;
+    for (int i=0;i<len;i++){ out[i]=expf(z[i]-max); sum+=out[i]; }
+    for (int i=0;i<len;i++) out[i]/=sum;
+}
+
 __global__ void kernelFull(float* d_W1, float* d_b1, float* d_W2, float* d_b2, float* d_W3, float* d_b3, float* train_data, float* train_label) {
     int row = blockIdx.y + blockDim.y + threadIdx.y;
     for (int epoch=row; epoch<row+1; epoch++) {

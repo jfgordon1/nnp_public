@@ -90,83 +90,85 @@ void train_model(MODEL* model){
 
     kernelFull<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_b1, d_W2, d_b2, d_W3, d_b3, train_data, train_label);
     
-    for (int epoch=0; epoch<EPOCHS; epoch++) {
-        float loss=0;
-        for (int n=0; n<NUM_TRAIN; n++) {
-            // ---------- Forward ----------
+    // for (int epoch=0; epoch<EPOCHS; epoch++) {
+    //     float loss=0;
+    //     for (int n=0; n<NUM_TRAIN; n++) {
+    //         // ---------- Forward ----------
 
-            // kernelForward<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_b1, d_W2, d_b2, d_W3, d_b3, train_data[n]);
+    //         // kernelForward<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_b1, d_W2, d_b2, d_W3, d_b3, train_data[n]);
             
-            float h1[H1], h1a[H1];
-            for (int j=0;j<H1;j++){
-                h1[j]=model->b1[j];
-                for (int i=0;i<SIZE;i++) h1[j]+=train_data[n][i]*model->W1[i*H1+j];
-                h1a[j]=relu(h1[j]);
-            }
-            float h2[H2], h2a[H2];
-            for (int j=0;j<H2;j++){
-                h2[j]=model->b2[j];
-                for (int i=0;i<H1;i++) h2[j]+=h1a[i]*model->W2[i*H2+j];
-                h2a[j]=relu(h2[j]);
-            }
-            float out[CLASSES], outa[CLASSES];
-            for (int k=0;k<CLASSES;k++){
-                out[k]=model->b3[k];
-                for (int j=0;j<H2;j++) out[k]+=h2a[j]*model->W3[j*CLASSES+k];
-            }
-            softmax(out,outa,CLASSES);
+    //         float h1[H1], h1a[H1];
+    //         for (int j=0;j<H1;j++){
+    //             h1[j]=model->b1[j];
+    //             for (int i=0;i<SIZE;i++) h1[j]+=train_data[n][i]*model->W1[i*H1+j];
+    //             h1a[j]=relu(h1[j]);
+    //         }
+    //         float h2[H2], h2a[H2];
+    //         for (int j=0;j<H2;j++){
+    //             h2[j]=model->b2[j];
+    //             for (int i=0;i<H1;i++) h2[j]+=h1a[i]*model->W2[i*H2+j];
+    //             h2a[j]=relu(h2[j]);
+    //         }
+    //         float out[CLASSES], outa[CLASSES];
+    //         for (int k=0;k<CLASSES;k++){
+    //             out[k]=model->b3[k];
+    //             for (int j=0;j<H2;j++) out[k]+=h2a[j]*model->W3[j*CLASSES+k];
+    //         }
+    //         softmax(out,outa,CLASSES);
 
-            // ---------- Loss ----------
+    //         // ---------- Loss ----------
 
-            // kernelLoss<<<blocksPerGrid, threadsPerBlock>>>(loss, train_label[n], outa);
+    //         // kernelLoss<<<blocksPerGrid, threadsPerBlock>>>(loss, train_label[n], outa);
 
-            for (int k=0;k<CLASSES;k++)
-                loss -= train_label[n][k]*logf(outa[k]+1e-8f);
+    //         for (int k=0;k<CLASSES;k++)
+    //             loss -= train_label[n][k]*logf(outa[k]+1e-8f);
 
 
-            // ---------- Backprop ----------
+    //         // ---------- Backprop ----------
 
-            // kernelBackprop<<<blocksPerGrid, threadsPerBlock>>>(outa, d_W2, d_W3, train_label[n]);
+    //         // kernelBackprop<<<blocksPerGrid, threadsPerBlock>>>(outa, d_W2, d_W3, train_label[n]);
 
-            float delta3[CLASSES];
-            for (int k=0;k<CLASSES;k++)
-                delta3[k] = train_label[n][k]-outa[k];
+    //         float delta3[CLASSES];
+    //         for (int k=0;k<CLASSES;k++)
+    //             delta3[k] = train_label[n][k]-outa[k];
 
-            float delta2[H2];
-            for (int j=0;j<H2;j++){
-                float err=0;
-                for (int k=0;k<CLASSES;k++) err+=delta3[k]*model->W3[j*CLASSES+k];
-                delta2[j]=err*drelu(h2a[j]);
-            }
+    //         float delta2[H2];
+    //         for (int j=0;j<H2;j++){
+    //             float err=0;
+    //             for (int k=0;k<CLASSES;k++) err+=delta3[k]*model->W3[j*CLASSES+k];
+    //             delta2[j]=err*drelu(h2a[j]);
+    //         }
 
-            float delta1[H1];
-            for (int j=0;j<H1;j++){
-                float err=0;
-                for (int k=0;k<H2;k++) err+=delta2[k]*model->W2[j*H2+k];
-                delta1[j]=err*drelu(h1a[j]);
-            }
+    //         float delta1[H1];
+    //         for (int j=0;j<H1;j++){
+    //             float err=0;
+    //             for (int k=0;k<H2;k++) err+=delta2[k]*model->W2[j*H2+k];
+    //             delta1[j]=err*drelu(h1a[j]);
+    //         }
 
-            // ---------- Update ----------
+    //         // ---------- Update ----------
 
-            // kernelUpdate<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_W2, d_W3, d_b1, d_b2, d_b3, train_data[n]);
+    //         // kernelUpdate<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_W2, d_W3, d_b1, d_b2, d_b3, train_data[n]);
 
-            for (int j=0;j<H2;j++)
-                for (int k=0;k<CLASSES;k++)
-                    model->W3[j*CLASSES+k]+=LR*delta3[k]*h2a[j];
-            for (int k=0;k<CLASSES;k++) model->b3[k]+=LR*delta3[k];
+    //         for (int j=0;j<H2;j++)
+    //             for (int k=0;k<CLASSES;k++)
+    //                 model->W3[j*CLASSES+k]+=LR*delta3[k]*h2a[j];
+    //         for (int k=0;k<CLASSES;k++) model->b3[k]+=LR*delta3[k];
 
-            for (int j=0;j<H1;j++)
-                for (int k=0;k<H2;k++)
-                    model->W2[j*H2+k]+=LR*delta2[k]*h1a[j];
-            for (int k=0;k<H2;k++) model->b2[k]+=LR*delta2[k];
+    //         for (int j=0;j<H1;j++)
+    //             for (int k=0;k<H2;k++)
+    //                 model->W2[j*H2+k]+=LR*delta2[k]*h1a[j];
+    //         for (int k=0;k<H2;k++) model->b2[k]+=LR*delta2[k];
 
-            for (int i=0;i<SIZE;i++)
-                for (int j=0;j<H1;j++)
-                    model->W1[i*H1+j]+=LR*delta1[j]*train_data[n][i];
-            for (int j=0;j<H1;j++) model->b1[j]+=LR*delta1[j];
-        }
-        printf("Epoch %d, Loss=%.4f\n", epoch, loss/NUM_TRAIN);
-    }
+    //         for (int i=0;i<SIZE;i++)
+    //             for (int j=0;j<H1;j++)
+    //                 model->W1[i*H1+j]+=LR*delta1[j]*train_data[n][i];
+    //         for (int j=0;j<H1;j++) model->b1[j]+=LR*delta1[j];
+    //     }
+    //     printf("Epoch %d, Loss=%.4f\n", epoch, loss/NUM_TRAIN);
+    // }
+    cudaDeviceSynchronize();
+
     cudaMemcpy(model->W1, d_W1, SIZE*H1*sizeof(float), cudaMemcpyDeviceToHost); cudaMemcpy(model->b1, d_b1, H1*sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(model->W2, d_W2, H1*H2*sizeof(float), cudaMemcpyDeviceToHost); cudaMemcpy(model->b2, d_b2, H2*sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(model->W3, d_W3, H2*CLASSES*sizeof(float), cudaMemcpyDeviceToHost); cudaMemcpy(model->b3, d_b3, CLASSES*sizeof(float), cudaMemcpyDeviceToHost);
