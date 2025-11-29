@@ -1,7 +1,7 @@
 /* kernels.cu
  *
  *  Created on: Nov 9, 2025
- *  
+ *
  *  Location for CUDA kernels  kernels should be defined here, and prototypes placed in kernels.h
  *
  *  Example:
@@ -9,7 +9,6 @@
  */
 #include "kernels.h"
 #include "config.h"
-
 
 // __global__ void kernelForward(float* d_W1, float* d_b1, float* d_W2, float* d_b2, float* d_W3, float* d_b3, float* train_data){
 //     int row = blockIdx.y * blockDim.y + threadIdx.y;
@@ -88,15 +87,15 @@
 //     for (int j=0;j<256;j++) d_b1[j]+=0.01*delta1[j];
 // }
 
-__device__ float relu(float x) {
+__host__ __device__ float relu(float x) {
     return x > 0 ? x : 0;
 }
 
-__device__ float drelu(float x) {
+__host__ __device__ float drelu(float x) {
     return x > 0 ? 1.0f : 0.0f;
 }
 
-__device__ void softmax(float *z, float *out, int len) {
+__host__ __device__ void softmax(float *z, float *out, int len) {
     float max = z[0];
     for (int i=1;i<len;i++) if (z[i]>max) max=z[i];
     float sum=0;
@@ -104,32 +103,31 @@ __device__ void softmax(float *z, float *out, int len) {
     for (int i=0;i<len;i++) out[i]/=sum;
 }
 
-__global__ void kernelFull(float* d_W1, float* d_b1, float* d_W2, float* d_b2, float* d_W3, float* d_b3, float* train_data, float* train_label) {
+__global__ void kernelFull(float* d_W1, float* d_b1, float* d_W2, float* d_b2, float* d_W3, float* d_b3, float* d_train_data, float* d_train_label) {
     int row = blockIdx.y + blockDim.y + threadIdx.y;
     for (int epoch=row; epoch<row+1; epoch++) {
-        if (epoch >=5) break;
         float loss=0;
         for (int n=0; n<NUM_TRAIN; n++) {
             // ---------- Forward ----------
 
             // kernelForward<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_b1, d_W2, d_b2, d_W3, d_b3, train_data[n]);
-            
+
             float h1[H1], h1a[H1];
             for (int j=0;j<H1;j++){
-                h1[j]=model->b1[j];
-                for (int i=0;i<SIZE;i++) h1[j]+=train_data[n][i]*model->W1[i*H1+j];
+                h1[j]=d_b1[j];
+                for (int i=0;i<SIZE;i++) h1[j]+=d_train_data[n * SIZE + i]*d_W1[i*H1+j];
                 h1a[j]=relu(h1[j]);
             }
             float h2[H2], h2a[H2];
             for (int j=0;j<H2;j++){
-                h2[j]=model->b2[j];
-                for (int i=0;i<H1;i++) h2[j]+=h1a[i]*model->W2[i*H2+j];
+                h2[j]=d_b2[j];
+                for (int i=0;i<H1;i++) h2[j]+=h1a[i]*d_W2[i*H2+j];
                 h2a[j]=relu(h2[j]);
             }
             float out[CLASSES], outa[CLASSES];
             for (int k=0;k<CLASSES;k++){
-                out[k]=model->b3[k];
-                for (int j=0;j<H2;j++) out[k]+=h2a[j]*model->W3[j*CLASSES+k];
+                out[k]=d_b3[k];
+                for (int j=0;j<H2;j++) out[k]+=h2a[j]*d_W3[j*CLASSES+k];
             }
             softmax(out,outa,CLASSES);
 
@@ -138,7 +136,7 @@ __global__ void kernelFull(float* d_W1, float* d_b1, float* d_W2, float* d_b2, f
             // kernelLoss<<<blocksPerGrid, threadsPerBlock>>>(loss, train_label[n], outa);
 
             for (int k=0;k<CLASSES;k++)
-                loss -= train_label[n][k]*logf(outa[k]+1e-8f);
+                loss -= d_train_label[n * CLASSES + k]*logf(outa[k]+1e-8f);
 
 
             // ---------- Backprop ----------
@@ -147,19 +145,19 @@ __global__ void kernelFull(float* d_W1, float* d_b1, float* d_W2, float* d_b2, f
 
             float delta3[CLASSES];
             for (int k=0;k<CLASSES;k++)
-                delta3[k] = train_label[n][k]-outa[k];
+                delta3[k] = d_train_label[n * CLASSES + k]-outa[k];
 
             float delta2[H2];
             for (int j=0;j<H2;j++){
                 float err=0;
-                for (int k=0;k<CLASSES;k++) err+=delta3[k]*model->W3[j*CLASSES+k];
+                for (int k=0;k<CLASSES;k++) err+=delta3[k]*d_W3[j*CLASSES+k];
                 delta2[j]=err*drelu(h2a[j]);
             }
 
             float delta1[H1];
             for (int j=0;j<H1;j++){
                 float err=0;
-                for (int k=0;k<H2;k++) err+=delta2[k]*model->W2[j*H2+k];
+                for (int k=0;k<H2;k++) err+=delta2[k]*d_W2[j*H2+k];
                 delta1[j]=err*drelu(h1a[j]);
             }
 
@@ -169,19 +167,19 @@ __global__ void kernelFull(float* d_W1, float* d_b1, float* d_W2, float* d_b2, f
 
             for (int j=0;j<H2;j++)
                 for (int k=0;k<CLASSES;k++)
-                    model->W3[j*CLASSES+k]+=LR*delta3[k]*h2a[j];
-            for (int k=0;k<CLASSES;k++) model->b3[k]+=LR*delta3[k];
+                    d_W3[j*CLASSES+k]+=LR*delta3[k]*h2a[j];
+            for (int k=0;k<CLASSES;k++) d_b3[k]+=LR*delta3[k];
 
             for (int j=0;j<H1;j++)
                 for (int k=0;k<H2;k++)
-                    model->W2[j*H2+k]+=LR*delta2[k]*h1a[j];
-            for (int k=0;k<H2;k++) model->b2[k]+=LR*delta2[k];
+                    d_W2[j*H2+k]+=LR*delta2[k]*h1a[j];
+            for (int k=0;k<H2;k++) d_b2[k]+=LR*delta2[k];
 
             for (int i=0;i<SIZE;i++)
                 for (int j=0;j<H1;j++)
-                    model->W1[i*H1+j]+=LR*delta1[j]*train_data[n][i];
-            for (int j=0;j<H1;j++) model->b1[j]+=LR*delta1[j];
+                    d_W1[i*H1+j]+=LR*delta1[j]*d_train_data[n * SIZE + i];
+            for (int j=0;j<H1;j++) d_b1[j]+=LR*delta1[j];
         }
-        printf("Epoch %d, Loss=%.4f\n", epoch, loss/NUM_TRAIN);
+        //printf("Epoch %d, Loss=%.4f\n", epoch, loss/NUM_TRAIN);
     }
 }

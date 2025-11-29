@@ -28,9 +28,9 @@
 * Arguments:
 *   x: input value
 * Returns:
-*   activated value based on ReLU function 
+*   activated value based on ReLU function
 */
-float relu(float x) { return x > 0 ? x : 0; }
+//float relu(float x) { return x > 0 ? x : 0; }
 
 /* Derivative of ReLU activation function
 * Arguments:
@@ -38,21 +38,21 @@ float relu(float x) { return x > 0 ? x : 0; }
 * Returns:
 *   derivative value
 */
-float drelu(float y) { return y > 0 ? 1 : 0; }
+//float drelu(float y) { return y > 0 ? 1 : 0; }
 
 /* Softmax activation function
 * Arguments:
 *   z: input array
 *   out: output array to store softmax results
 *   len: length of the input/output arrays
-*/ 
-void softmax(float *z, float *out, int len) {
-    float max = z[0];
-    for (int i=1;i<len;i++) if (z[i]>max) max=z[i];
-    float sum=0;
-    for (int i=0;i<len;i++){ out[i]=expf(z[i]-max); sum+=out[i]; }
-    for (int i=0;i<len;i++) out[i]/=sum;
-}
+*/
+//void softmax(float *z, float *out, int len) {
+//    float max = z[0];
+//    for (int i=1;i<len;i++) if (z[i]>max) max=z[i];
+//    float sum=0;
+//    for (int i=0;i<len;i++){ out[i]=expf(z[i]-max); sum+=out[i]; }
+//    for (int i=0;i<len;i++) out[i]/=sum;
+//}
 
 /* Initialize weights with small random values
 * Arguments:
@@ -64,7 +64,7 @@ void init_weights(float *w, int size) {
         w[i] = ((float)rand()/RAND_MAX - 0.5f) * 0.1f;
 }
 
-/* Train the model using stochastic gradient descent 
+/* Train the model using stochastic gradient descent
 * Arguments:
 *   model (out): pointer to the MODEL structure which holds network parameters. It is populated by this function.
 * Returns:
@@ -78,25 +78,30 @@ void train_model(MODEL* model){
     float* d_W1; float* d_b1;
     float* d_W2; float* d_b2;
     float* d_W3; float* d_b3;
+    float* d_train_data; float* d_train_label;
     cudaMalloc((void**)&d_W1, SIZE*H1*sizeof(float)); cudaMalloc((void**)&d_b1, H1*sizeof(float));
     cudaMalloc((void**)&d_W2, H1*H2*sizeof(float)); cudaMalloc((void**)&d_b2, H2*sizeof(float));
     cudaMalloc((void**)&d_W3, H2*CLASSES*sizeof(float)); cudaMalloc((void**)&d_b3, CLASSES*sizeof(float));
+    cudaMalloc((void**)&d_train_data, NUM_TRAIN*SIZE*sizeof(float));
+    cudaMalloc((void**)&d_train_label, NUM_TRAIN*CLASSES*sizeof(float));
     cudaMemcpy(d_W1, model->W1, SIZE*H1*sizeof(float), cudaMemcpyHostToDevice); cudaMemcpy(d_b1, model->b1, H1*sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(d_W2, model->W2, H1*H2*sizeof(float), cudaMemcpyHostToDevice); cudaMemcpy(d_b2, model->b2, H2*sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(d_W3, model->W3, H2*CLASSES*sizeof(float), cudaMemcpyHostToDevice); cudaMemcpy(d_b3, model->b3, CLASSES*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_train_data, train_data NUM_TRAIN*SIZE*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_train_label, train_label, NUM_TRAIN*CLASSES*sizeof(float), cudaMemcpyHostToDevice);
 
-    dim3 threadsPerBlock(1024, 1); 
+    dim3 threadsPerBlock(1024, 1);
     dim3 blocksPerGrid((H1 + threadsPerBlock.x - 1) / threadsPerBlock.x, (SIZE + threadsPerBlock.y - 1) / threadsPerBlock.y);
 
-    kernelFull<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_b1, d_W2, d_b2, d_W3, d_b3, train_data, train_label);
-    
+    kernelFull<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_b1, d_W2, d_b2, d_W3, d_b3, d_train_data, d_train_label);
+
     // for (int epoch=0; epoch<EPOCHS; epoch++) {
     //     float loss=0;
     //     for (int n=0; n<NUM_TRAIN; n++) {
     //         // ---------- Forward ----------
 
     //         // kernelForward<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_b1, d_W2, d_b2, d_W3, d_b3, train_data[n]);
-            
+
     //         float h1[H1], h1a[H1];
     //         for (int j=0;j<H1;j++){
     //             h1[j]=model->b1[j];
@@ -175,6 +180,7 @@ void train_model(MODEL* model){
 
     cudaFree(d_W1); cudaFree(d_W2); cudaFree(d_W3);
     cudaFree(d_b1); cudaFree(d_b2); cudaFree(d_b3);
+    cudaFree(d_train_data); cudaFree(d_train_label);
 }
 
 /* Save the trained model to a binary file
@@ -184,14 +190,14 @@ void train_model(MODEL* model){
 *   None
 */
 void save_model(MODEL* model){
-	FILE *f = fopen("model.bin", "wb");
-	fwrite(model->W1, sizeof(float), SIZE*H1, f);
-	fwrite(model->b1, sizeof(float), H1, f);
-	fwrite(model->W2, sizeof(float), H1*H2, f);
-	fwrite(model->b2, sizeof(float), H2, f);
-	fwrite(model->W3, sizeof(float), H2*CLASSES, f);
-	fwrite(model->b3, sizeof(float), CLASSES,f);
-	fclose(f);
+        FILE *f = fopen("model.bin", "wb");
+        fwrite(model->W1, sizeof(float), SIZE*H1, f);
+        fwrite(model->b1, sizeof(float), H1, f);
+        fwrite(model->W2, sizeof(float), H1*H2, f);
+        fwrite(model->b2, sizeof(float), H2, f);
+        fwrite(model->W3, sizeof(float), H2*CLASSES, f);
+        fwrite(model->b3, sizeof(float), CLASSES,f);
+        fclose(f);
 }
 
 /* Load the trained model from a binary file
@@ -201,14 +207,14 @@ void save_model(MODEL* model){
 *   None
 */
 void load_model(MODEL* model){
-	FILE *f = fopen("model.bin", "rb");
-	fread(model->W1, sizeof(float), SIZE*H1, f);
-	fread(model->b1, sizeof(float), H1, f);
-	fread(model->W2, sizeof(float), H1*H2, f);
-	fread(model->b2, sizeof(float), H2, f);
-	fread(model->W3, sizeof(float), H2*CLASSES, f);
-	fread(model->b3, sizeof(float), CLASSES, f);
-	fclose(f);
+        FILE *f = fopen("model.bin", "rb");
+        fread(model->W1, sizeof(float), SIZE*H1, f);
+        fread(model->b1, sizeof(float), H1, f);
+        fread(model->W2, sizeof(float), H1*H2, f);
+        fread(model->b2, sizeof(float), H2, f);
+        fread(model->W3, sizeof(float), H2*CLASSES, f);
+        fread(model->b3, sizeof(float), CLASSES, f);
+        fclose(f);
 }
 
 /* Predict the class of a given input image
@@ -232,5 +238,3 @@ void predict(float *x, MODEL* model){
     for(int k=1;k<CLASSES;k++) if(outa[k]>max){ max=outa[k]; pred=k; }
     printf("Predicted digit: %d (confidence %.2f)\n", pred, max);
 }
-
-
