@@ -105,6 +105,7 @@ __host__ __device__ void softmax(float *z, float *out, int len) {
 
 __global__ void kernelFull(float* d_W1, float* d_b1, float* d_W2, float* d_b2, float* d_W3, float* d_b3, float* d_train_data, float* d_train_label) {
     int row = blockIdx.y + blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
     for (int epoch=row; epoch<row+1; epoch++) {
         float loss=0;
         for (int n=0; n<NUM_TRAIN; n++) {
@@ -113,24 +114,47 @@ __global__ void kernelFull(float* d_W1, float* d_b1, float* d_W2, float* d_b2, f
             // kernelForward<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_b1, d_W2, d_b2, d_W3, d_b3, train_data[n]);
 
             float h1[H1], h1a[H1];
-            for (int j=0;j<H1;j++){
+            if col > H1{
+            }
+            else{
+                for (int j=col;j<col+1;j++){
                 h1[j]=d_b1[j];
-                for (int i=0;i<SIZE;i++) h1[j]+=d_train_data[n * SIZE + i]*d_W1[i*H1+j];
+                for (int i=col;i<col+1;i++) h1[j]+=d_train_data[n * SIZE + i]*d_W1[i*H1+j];
                 h1a[j]=relu(h1[j]);
+                }
             }
+
+            __syncThreads();
+
             float h2[H2], h2a[H2];
-            for (int j=0;j<H2;j++){
-                h2[j]=d_b2[j];
-                for (int i=0;i<H1;i++) h2[j]+=h1a[i]*d_W2[i*H2+j];
-                h2a[j]=relu(h2[j]);
+            if col>H2{
+                
             }
+            else{
+                for (int j=col;j<col+1;j++){
+                h2[j]=d_b2[j];
+                for (int i=col;i<col+1;i++) h2[j]+=h1a[i]*d_W2[i*H2+j];
+                h2a[j]=relu(h2[j]);
+                }
+            }
+            
+            __syncThreads();
+
             float out[CLASSES], outa[CLASSES];
-            for (int k=0;k<CLASSES;k++){
+            if col>CLASSES{
+                
+            }
+            else{
+                for (int k=col;k<CLASSES;k++){
                 out[k]=d_b3[k];
                 for (int j=0;j<H2;j++) out[k]+=h2a[j]*d_W3[j*CLASSES+k];
+                }
             }
+            
+            __syncThreads();
+            
             softmax(out,outa,CLASSES);
-
+            
             // ---------- Loss ----------
 
             // kernelLoss<<<blocksPerGrid, threadsPerBlock>>>(loss, train_label[n], outa);
