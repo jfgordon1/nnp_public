@@ -104,8 +104,8 @@ __host__ __device__ void softmax(float *z, float *out, int len) {
 }
 
 __global__ void kernelFull(float* d_W1, float* d_b1, float* d_W2, float* d_b2, float* d_W3, float* d_b3, float* d_train_data, float* d_train_label) {
-    int row = blockIdx.y + blockDim.y + threadIdx.y;
-    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    int row = blockIdx.x + blockDim.x + threadIdx.x;
+    int col = blockIdx.y * blockDim.y + threadIdx.y;
     for (int epoch=row; epoch<row+1; epoch++) {
         float loss=0;
         for (int n=0; n<NUM_TRAIN; n++) {
@@ -114,7 +114,7 @@ __global__ void kernelFull(float* d_W1, float* d_b1, float* d_W2, float* d_b2, f
             // kernelForward<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_b1, d_W2, d_b2, d_W3, d_b3, train_data[n]);
 
             float h1[H1], h1a[H1];
-            if col > H1{
+            if (col > H1) {
             }
             else{
                 for (int j=col;j<col+1;j++){
@@ -124,34 +124,34 @@ __global__ void kernelFull(float* d_W1, float* d_b1, float* d_W2, float* d_b2, f
                 }
             }
 
-            __syncThreads();
+            __syncthreads();
 
             float h2[H2], h2a[H2];
-            if col>H2{
+            if (col>H2) {
                 
             }
             else{
                 for (int j=col;j<col+1;j++){
-                h2[j]=d_b2[j];
-                for (int i=col;i<col+1;i++) h2[j]+=h1a[i]*d_W2[i*H2+j];
-                h2a[j]=relu(h2[j]);
+                    h2[j]=d_b2[j];
+                    for (int i=col;i<col+1;i++) h2[j]+=h1a[i]*d_W2[i*H2+j];
+                    h2a[j]=relu(h2[j]);
                 }
             }
             
-            __syncThreads();
+            __syncthreads();
 
             float out[CLASSES], outa[CLASSES];
-            if col>CLASSES{
+            if (col>CLASSES) {
                 
             }
             else{
-                for (int k=col;k<CLASSES;k++){
-                out[k]=d_b3[k];
-                for (int j=0;j<H2;j++) out[k]+=h2a[j]*d_W3[j*CLASSES+k];
+                for (int k=col;k<col+1;k++){
+                    out[k]=d_b3[k];
+                    for (int j=0;j<H2;j++) out[k]+=h2a[j]*d_W3[j*CLASSES+k];
                 }
             }
             
-            __syncThreads();
+            __syncthreads();
             
             softmax(out,outa,CLASSES);
             
@@ -159,7 +159,7 @@ __global__ void kernelFull(float* d_W1, float* d_b1, float* d_W2, float* d_b2, f
 
             // kernelLoss<<<blocksPerGrid, threadsPerBlock>>>(loss, train_label[n], outa);
 
-            for (int k=0;k<CLASSES;k++)
+            for (int k=col;k<col+1;k++)
                 loss -= d_train_label[n * CLASSES + k]*logf(outa[k]+1e-8f);
 
 
@@ -168,41 +168,57 @@ __global__ void kernelFull(float* d_W1, float* d_b1, float* d_W2, float* d_b2, f
             // kernelBackprop<<<blocksPerGrid, threadsPerBlock>>>(outa, d_W2, d_W3, train_label[n]);
 
             float delta3[CLASSES];
-            for (int k=0;k<CLASSES;k++)
+            for (int k=col;k<col+1;k++)
                 delta3[k] = d_train_label[n * CLASSES + k]-outa[k];
 
+            __syncthreads();
+
             float delta2[H2];
-            for (int j=0;j<H2;j++){
+            for (int j=col;j<col+1;j++){
                 float err=0;
                 for (int k=0;k<CLASSES;k++) err+=delta3[k]*d_W3[j*CLASSES+k];
                 delta2[j]=err*drelu(h2a[j]);
             }
 
+            __syncthreads();
+
             float delta1[H1];
-            for (int j=0;j<H1;j++){
+            for (int j=col;j<col+1;j++){
                 float err=0;
                 for (int k=0;k<H2;k++) err+=delta2[k]*d_W2[j*H2+k];
                 delta1[j]=err*drelu(h1a[j]);
             }
 
+            __syncthreads();
             // ---------- Update ----------
 
             // kernelUpdate<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_W2, d_W3, d_b1, d_b2, d_b3, train_data[n]);
 
-            for (int j=0;j<H2;j++)
+            for (int j=col;j<col+1;j++)
+            {
                 for (int k=0;k<CLASSES;k++)
                     d_W3[j*CLASSES+k]+=LR*delta3[k]*h2a[j];
-            for (int k=0;k<CLASSES;k++) d_b3[k]+=LR*delta3[k];
+            }    
+            for (int k=col;k<CLASSES;k++) d_b3[k]+=LR*delta3[k];
 
-            for (int j=0;j<H1;j++)
+            __syncthreads();
+
+            for (int j=col;j<col+1;j++)
+            {
                 for (int k=0;k<H2;k++)
                     d_W2[j*H2+k]+=LR*delta2[k]*h1a[j];
-            for (int k=0;k<H2;k++) d_b2[k]+=LR*delta2[k];
+            }  
+            for (int k=col;k<col+1;k++) d_b2[k]+=LR*delta2[k];
+            
+           __syncthreads();
 
-            for (int i=0;i<SIZE;i++)
-                for (int j=0;j<H1;j++)
-                    d_W1[i*H1+j]+=LR*delta1[j]*d_train_data[n * SIZE + i];
-            for (int j=0;j<H1;j++) d_b1[j]+=LR*delta1[j];
+            for (int i=col;i<SIZE;i++){
+            for (int j=0;j<H1;j++)
+                d_W1[i*H1+j]+=LR*delta1[j]*d_train_data[n * SIZE + i];
+            }
+            for (int j=col;j<H1;j++) d_b1[j]+=LR*delta1[j];
+            
+            __syncthreads();
         }
         //printf("Epoch %d, Loss=%.4f\n", epoch, loss/NUM_TRAIN);
     }
