@@ -154,7 +154,6 @@ __global__ void kernelFull(float* d_W1, float* d_b1, float* d_W2, float* d_b2, f
             __syncthreads();
             
             softmax(out,outa,CLASSES);
-            
             // ---------- Loss ----------
 
             // kernelLoss<<<blocksPerGrid, threadsPerBlock>>>(loss, train_label[n], outa);
