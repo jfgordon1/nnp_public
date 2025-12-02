@@ -87,15 +87,18 @@
 //     for (int j=0;j<256;j++) d_b1[j]+=0.01*delta1[j];
 // }
 
-__host__ __device__ float relu(float x) {
+__host__ __device__ float relu(float x) 
+{
     return x > 0 ? x : 0;
 }
 
-__host__ __device__ float drelu(float x) {
+__host__ __device__ float drelu(float x) 
+{
     return x > 0 ? 1.0f : 0.0f;
 }
 
-__host__ __device__ void softmax(float *z, float *out, int len) {
+__host__ __device__ void softmax(float *z, float *out, int len)
+{
     float max = z[0];
     for (int i=1;i<len;i++) if (z[i]>max) max=z[i];
     float sum=0;
@@ -104,27 +107,76 @@ __host__ __device__ void softmax(float *z, float *out, int len) {
 }
 
 
-__global__ void kernelForward(float* d_W1, float* d_b1, float* d_W2, float* d_b2, float* d_W3, float* d_b3){
-    int row = blockIdx.x + blockDim.x + threadIdx.x
-    int
+__global__ void kernelForward(float* d_W1, float* d_b1, float* d_W2, float* d_b2, float* d_W3, float* d_b3, float* d_train_data)
+{
+    int row = blockIdx.y + blockDim.y + threadIdx.y
     float h1[H1], h1a[H1];
-        for (int j=0;j<H1;j++){
-            h1[j]=model->b1[j];
-            for (int i=0;i<SIZE;i++) h1[j]+=train_data[n][i]*model->W1[i*H1+j];
-            h1a[j]=relu(h1[j]);
+    if (row > H1)
+    {
+
+    }
+
+    else
+    {
+        for (int j=row;j<row+1;j++){
+        h1[j]=model->d_b1[j];
+        for (int i=0;i<SIZE;i++) h1[j]+=d_train_data[n][i]*model->d_W1[i*H1+j];
+        h1a[j]=relu(h1[j]);
+        }   
+    }
+    
+    __syncthreads();
+
+    float h2[H2], h2a[H2];
+
+    if (row > H2)
+    {
+
+    }
+
+    else
+    {
+        for (int j=row;j<row+1;j++){
+        h2[j]=model->d_b2[j];
+        for (int i=0;i<H1;i++) h2[j]+=h1a[i]*model->d_W2[i*H2+j];
+        h2a[j]=relu(h2[j]);
         }
-        float h2[H2], h2a[H2];
-        for (int j=0;j<H2;j++){
-            h2[j]=model->b2[j];
-            for (int i=0;i<H1;i++) h2[j]+=h1a[i]*model->W2[i*H2+j];
-            h2a[j]=relu(h2[j]);
-        }
-        float out[CLASSES], outa[CLASSES];
+    }
+    
+    __syncthreads();
+
+    float out[CLASSES], outa[CLASSES];
+    
+    if (row > CLASSES)
+    {
+
+    }
+
+    else
+    {
         for (int k=0;k<CLASSES;k++){
-            out[k]=model->b3[k];
-            for (int j=0;j<H2;j++) out[k]+=h2a[j]*model->W3[j*CLASSES+k];
+        out[k]=model->d_b3[k];
+        for (int j=0;j<H2;j++) out[k]+=h2a[j]*model->d_W3[j*CLASSES+k];
         }
-        softmax(out,outa,CLASSES);
+    }
+    
+    softmax(out,outa,CLASSES);
+    
+    __syncthreads();
+}
+
+__global__ void kernelLoss(float* d_loss, float* d_train_label)
+{
+    int row = blockIdx.y + blockDim.y, threadIdx.y;
+    if (int k=row;k<CLASSES;k++)
+    {
+        loss -= train_label[n* CLASSES + k]*logf(outa[k]+1e-8f);
+    }            
+}
+
+__global__ void kernelBackprop()
+{
+
 }
 
 __global__ void kernelFull(float* d_W1, float* d_b1, float* d_W2, float* d_b2, float* d_W3, float* d_b3, float* d_train_data, float* d_train_label) {
@@ -183,7 +235,7 @@ __global__ void kernelFull(float* d_W1, float* d_b1, float* d_W2, float* d_b2, f
             // kernelLoss<<<blocksPerGrid, threadsPerBlock>>>(loss, train_label[n], outa);
 
             for (int k=col;k<col+1;k++)
-                loss -= d_train_label[n * CLASSES + k]*logf(outa[k]+1e-8f);
+                d_loss -= d_train_label[n * CLASSES + k]*logf(outa[k]+1e-8f);
 
 
             // ---------- Backprop ----------
