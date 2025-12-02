@@ -111,7 +111,7 @@ void train_model(MODEL* model){
         for (int n=0; n<NUM_TRAIN; n++) {
             // ---------- Forward ----------
 
-            kernelForward<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_b1, d_W2, d_b2, d_W3, d_b3, d_train_data[n * SIZE]);
+            kernelForward<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_b1, d_W2, d_b2, d_W3, d_b3, d_train_data, n);
             cudaDeviceSynchronize();
 
             // ---------- Loss ----------
@@ -124,7 +124,7 @@ void train_model(MODEL* model){
 
             // ---------- Backprop ----------
 
-            kernelBackprop<<<blocksPerGrid, threadsPerBlock>>>(outa, d_W2, d_W3, d_train_label[n * CLASSES]);
+            kernelBackprop<<<blocksPerGrid, threadsPerBlock>>>(outa, d_W2, d_W3, d_train_label, n, h1a, h2a);
             cudaDeviceSynchronize();
 
             cudaMemcpy(&delta3, d_delta3, CLASSES*sizeof(float), cudaMemcpyDeviceToHost);
@@ -151,7 +151,7 @@ void train_model(MODEL* model){
 
             // ---------- Update ----------
 
-            kernelUpdate<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_W2, d_W3, d_b1, d_b2, d_b3, d_train_data, n, d_delta1, d_delta2, d_delta3, d_h1a, d_h2a);
+            kernelUpdate<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_W2, d_W3, d_b1, d_b2, d_b3, d_train_data, n, delta1, delta2, delta3, h1a, h2a);
             cudaDeviceSynchronize();
 
             // for (int j=0;j<H2;j++)

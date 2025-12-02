@@ -105,21 +105,24 @@ __host__ __device__ void softmax(float *z, float *out, int len) {
 
 
 __global__ void kernelForward(float* d_W1, float* d_b1, float* d_W2, float* d_b2, float* d_W3, float* d_b3, float* d_train_data, int n){
-    int row = blockIdx.x + blockDim.x + threadIdx.x
+    int row = blockIdx.x + blockDim.x + threadIdx.x;
 
-    float h1[H1]; h1a[H1];
+    float h1[H1];
+    float h1a[H1];
     for (int j=0;j<H1;j++){
         h1[j]=d_b1[j];
         for (int i=0;i<SIZE;i++) h1[j]+=d_train_data[n * SIZE + i]*d_W1[i*H1+j];
         h1a[j]=relu(h1[j]);
     }
-    float h2[H2], h2a[H2];
+    float h2[H2];
+    float h2a[H2];
     for (int j=0;j<H2;j++){
         h2[j]=d_b2[j];
         for (int i=0;i<H1;i++) h2[j]+=h1a[i]*d_W2[i*H2+j];
         h2a[j]=relu(h2[j]);
     }
-    float out[CLASSES], outa[CLASSES];
+    float out[CLASSES];
+    float outa[CLASSES];
     for (int k=0;k<CLASSES;k++){
         out[k]=d_b3[k];
         for (int j=0;j<H2;j++) out[k]+=h2a[j]*d_W3[j*CLASSES+k];
@@ -136,12 +139,12 @@ __global__ void kernelForward(float* d_W1, float* d_b1, float* d_W2, float* d_b2
 // }
 
 
-__global__ void kernelBackprop(float* outa, float* d_W2, float* d_W3, float* d_train_label, int n){
+__global__ void kernelBackprop(float* outa, float* d_W2, float* d_W3, float* d_train_label, int n, float* h1a, float* h2a){
     int row = blockIdx.x + blockDim.x + threadIdx.x;
 
     float delta3[CLASSES];
     for (int k=0;k<CLASSES;k++)
-        delta3[k] = d_train_label[k]-outa[k];
+        delta3[k] = d_train_label[n * CLASSES + k]-outa[k];
 
     float delta2[H2];
     for (int j=0;j<H2;j++){
@@ -159,7 +162,7 @@ __global__ void kernelBackprop(float* outa, float* d_W2, float* d_W3, float* d_t
 }
 
 
-__global__ void kernelUpdate(float* d_W1, float* d_W2, float* d_W3, float* d_b1, float* d_b2, float* d_b3, float* d_train_data, int n, float* d_delta1, float* d_delta2, float* d_delta3, float* d_h1a, float* d_h2a){
+__global__ void kernelUpdate(float* d_W1, float* d_W2, float* d_W3, float* d_b1, float* d_b2, float* d_b3, float* d_train_data, int n, float* delta1, float* delta2, float* delta3, float* h1a, float* h2a){
     int row = blockIdx.x + blockDim.x + threadIdx.x;
 
     for (int j=0;j<H2;j++)
@@ -174,7 +177,7 @@ __global__ void kernelUpdate(float* d_W1, float* d_W2, float* d_W3, float* d_b1,
 
     for (int i=0;i<SIZE;i++)
         for (int j=0;j<H1;j++)
-            d_W1[i*H1+j]+=LR*delta1[j]*d_train_data[i];
+            d_W1[i*H1+j]+=LR*delta1[j]*d_train_data[n * SIZE + i];
     for (int j=0;j<H1;j++) d_b1[j]+=LR*delta1[j];
 }
 
