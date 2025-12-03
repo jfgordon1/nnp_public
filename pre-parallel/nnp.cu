@@ -75,6 +75,22 @@ void train_model(MODEL* model){
     init_weights(model->W2, H1*H2); init_weights(model->b2, H2);
     init_weights(model->W3, H2*CLASSES); init_weights(model->b3, CLASSES);
 
+	float* d_W1, d_W2, d_W3;
+	float* d_b1, d_b2, d_b3;
+	float* d_train_data, d_train_label;
+	float* d_delta1, d_delta2, d_delta3;
+	float* d_H1, d_H2;
+
+	cudaMalloc((void**)&d_W1, SIZE*H1*sizeof(float)); cudaMalloc((void**)&d_b1, H1*sizeof(float));
+	cudaMalloc((void**)&d_W2, H1*H2*sizeof(float)); cudaMalloc((void**)&d_b2, H2*sizeof(float));
+	cudaMalloc((void**)&d_W3, CLASSES*H2*sizeof(float)); cudaMalloc((void**)&d_b3, CLASSES*sizeof(float));
+	cudaMalloc((void**)&d_train_data, NUM_TRAIN*SIZE*sizeof(float));
+	cudaMalloc((void**)&d_train_label, NUM_TRAIN*CLASSES*sizeof(float));
+	cudaMalloc((void**)&d_delta1, H1*sizeof(float));
+	cudaMalloc((void**)&d_delta2, H2*sizeof(float);
+	cudaMalloc((void**)&d_delta3, CLASSES*sizeof(float));
+
+
     for (int epoch=0; epoch<EPOCHS; epoch++) {
         float loss=0;
         for (int n=0; n<NUM_TRAIN; n++) {
