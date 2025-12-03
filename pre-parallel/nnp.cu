@@ -80,7 +80,7 @@ void train_model(MODEL* model){
     float* d_W2; float* d_b2;
     float* d_W3; float* d_b3;
     float* d_train_data; float* d_train_label;
-    float* d_loss;
+    float* d_loss = 0;
     cudaMalloc((void**)&d_W1, SIZE*H1*sizeof(float)); cudaMalloc((void**)&d_b1, H1*sizeof(float));
     cudaMalloc((void**)&d_W2, H1*H2*sizeof(float)); cudaMalloc((void**)&d_b2, H2*sizeof(float));
     cudaMalloc((void**)&d_W3, H2*CLASSES*sizeof(float)); cudaMalloc((void**)&d_b3, CLASSES*sizeof(float));
@@ -104,59 +104,57 @@ void train_model(MODEL* model){
             // ---------- Forward ----------
 
             kernelForward<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_b1, d_W2, d_b2, d_W3, d_b3, train_data[n]);
-            kernelLoss<<<blocksPerGrid, threadsPerBlock>>>(d_loss, d_train_label)
-
-            
 
             // ---------- Loss ----------
 
-            // kernelLoss<<<blocksPerGrid, threadsPerBlock>>>(loss, train_label[n], outa);
+            kernelLoss<<<blocksPerGrid, threadsPerBlock>>>(loss, train_label[n], outa);
 
-            for (int k=0;k<CLASSES;k++)
-                loss -= train_label[n][k]*logf(outa[k]+1e-8f);
+            // for (int k=0;k<CLASSES;k++)
+            //     loss -= train_label[n][k]*logf(outa[k]+1e-8f);
 
 
             // ---------- Backprop ----------
 
-            // kernelBackprop<<<blocksPerGrid, threadsPerBlock>>>(outa, d_W2, d_W3, train_label[n]);
+            kernelBackprop<<<blocksPerGrid, threadsPerBlock>>>(outa, d_W2, d_W3, train_label[n]);
 
-            float delta3[CLASSES];
-            for (int k=0;k<CLASSES;k++)
-                delta3[k] = train_label[n][k]-outa[k];
+            // float delta3[CLASSES];
+            // for (int k=0;k<CLASSES;k++)
+            //     delta3[k] = train_label[n][k]-outa[k];
 
-            float delta2[H2];
-            for (int j=0;j<H2;j++){
-                float err=0;
-                for (int k=0;k<CLASSES;k++) err+=delta3[k]*model->W3[j*CLASSES+k];
-                delta2[j]=err*drelu(h2a[j]);
-            }
+            // float delta2[H2];
+            // for (int j=0;j<H2;j++){
+            //     float err=0;
+            //     for (int k=0;k<CLASSES;k++) err+=delta3[k]*model->W3[j*CLASSES+k];
+            //     delta2[j]=err*drelu(h2a[j]);
+            // }
 
-            float delta1[H1];
-            for (int j=0;j<H1;j++){
-                float err=0;
-                for (int k=0;k<H2;k++) err+=delta2[k]*model->W2[j*H2+k];
-                delta1[j]=err*drelu(h1a[j]);
-            }
+            // float delta1[H1];
+            // for (int j=0;j<H1;j++){
+            //     float err=0;
+            //     for (int k=0;k<H2;k++) err+=delta2[k]*model->W2[j*H2+k];
+            //     delta1[j]=err*drelu(h1a[j]);
+            // }
 
             // ---------- Update ----------
 
-            // kernelUpdate<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_W2, d_W3, d_b1, d_b2, d_b3, train_data[n]);
+            kernelUpdate<<<blocksPerGrid, threadsPerBlock>>>(d_W1, d_W2, d_W3, d_b1, d_b2, d_b3, train_data[n]);
 
-            for (int j=0;j<H2;j++)
-                for (int k=0;k<CLASSES;k++)
-                    model->W3[j*CLASSES+k]+=LR*delta3[k]*h2a[j];
-            for (int k=0;k<CLASSES;k++) model->b3[k]+=LR*delta3[k];
+            // for (int j=0;j<H2;j++)
+            //     for (int k=0;k<CLASSES;k++)
+            //         model->W3[j*CLASSES+k]+=LR*delta3[k]*h2a[j];
+            // for (int k=0;k<CLASSES;k++) model->b3[k]+=LR*delta3[k];
 
-            for (int j=0;j<H1;j++)
-                for (int k=0;k<H2;k++)
-                    model->W2[j*H2+k]+=LR*delta2[k]*h1a[j];
-            for (int k=0;k<H2;k++) model->b2[k]+=LR*delta2[k];
+            // for (int j=0;j<H1;j++)
+            //     for (int k=0;k<H2;k++)
+            //         model->W2[j*H2+k]+=LR*delta2[k]*h1a[j];
+            // for (int k=0;k<H2;k++) model->b2[k]+=LR*delta2[k];
 
-            for (int i=0;i<SIZE;i++)
-                for (int j=0;j<H1;j++)
-                    model->W1[i*H1+j]+=LR*delta1[j]*train_data[n][i];
-            for (int j=0;j<H1;j++) model->b1[j]+=LR*delta1[j];
+            // for (int i=0;i<SIZE;i++)
+            //     for (int j=0;j<H1;j++)
+            //         model->W1[i*H1+j]+=LR*delta1[j]*train_data[n][i];
+            // for (int j=0;j<H1;j++) model->b1[j]+=LR*delta1[j];
         }
+        cudaMemcpy(loss, d_loss, sizeof(float), cudaMemcpyDeviceToHost)
         printf("Epoch %d, Loss=%.4f\n", epoch, loss/NUM_TRAIN);
     }
     cudaDeviceSynchronize();
