@@ -104,7 +104,7 @@ void train_model(MODEL* model){
     cudaMemcpy(d_W3, model->W3, H2*CLASSES*sizeof(float), cudaMemcpyHostToDevice); cudaMemcpy(d_b3, model->b3, CLASSES*sizeof(float), cudaMemcpyHostToDevice);
 
     for (int epoch=0; epoch<EPOCHS; epoch++) {
-        float loss=0;
+        cudaMemset(d_loss, 0, sizeof(float));
         for (int n=0; n<NUM_TRAIN; n++) {
             // ---------- Forward ----------
 
@@ -116,9 +116,7 @@ void train_model(MODEL* model){
             
             // ---------- Loss ----------
 
-            cudaMemset(d_loss, 0, sizeof(float));
             sumSubLoss<<<1, CLASSES>>>(d_train_label, d_outa, d_loss, n);
-            cudaMemcpy(&loss, d_loss, sizeof(float), cudaMemcpyDeviceToHost);
 
             // ---------- Backprop ----------
 
@@ -136,7 +134,11 @@ void train_model(MODEL* model){
 
             vectorMatrixMultB1<<<1, SIZE>>>(d_W1, d_delta1, d_train_data, d_b1, n);          
         }
+        cudaDeviceSynchronize();
+        float loss = 0;
+        cudaMemcpy(&loss, d_loss, sizeof(float), cudaMemcpyDeviceToHost);
         printf("Epoch %d, Loss=%.4f\n", epoch, loss/NUM_TRAIN);
+        fflush(stdout); // test
     }
 
     cudaMemcpy(model->W1, d_W1, SIZE*H1*sizeof(float), cudaMemcpyDeviceToHost); cudaMemcpy(model->b1, d_b1, H1*sizeof(float), cudaMemcpyDeviceToHost);
