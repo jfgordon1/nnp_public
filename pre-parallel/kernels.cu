@@ -28,6 +28,7 @@ __global__ void vectorMatrixMultH1(float* d_train_data, float* d_W1, float* d_b1
     d_h1[j]=d_b1[j];
     for (int i=0; i<SIZE; i++) d_h1[j]+=d_train_data[n*SIZE+i]*d_W1[i*H1+j];
     d_h1a[j]=relu(d_h1[j]);
+    __syncthreads();
 }
 
 __global__ void vectorMatrixMultH2(float* d_h1a, float* d_W2, float* d_b2, float* d_h2, float* d_h2a) {
@@ -36,6 +37,7 @@ __global__ void vectorMatrixMultH2(float* d_h1a, float* d_W2, float* d_b2, float
     d_h2[j]=d_b2[j];
     for (int i=0; i<H1; i++) d_h2[j]+=d_h1a[i]*d_W2[i*H2+j];
     d_h2a[j]=relu(d_h2[j]);
+    __syncthreads();
 }
 
 __global__ void vectorMatrixMultOut(float* d_h2a, float* d_W3, float* d_b3, float* d_out, float* d_outa) {
@@ -51,12 +53,14 @@ __global__ void sumSubLoss(float* d_train_label, float* d_outa, float* d_loss, i
     int j = blockIdx.x * blockDim.x + threadIdx.x;
     if (j >= CLASSES) return;
     *d_loss -= d_train_label[n*CLASSES+j]*logf(d_outa[j]+1e-8f);
+    __syncthreads();
 }
 
 __global__ void vectorAssignDelta3(float* d_delta3, float* d_train_label, float* d_outa, int n) {
     int j = blockIdx.x * blockDim.x + threadIdx.x;
     if (j >= CLASSES) return;
     d_delta3[j] = d_train_label[n*SIZE+j]-d_outa[j];
+    __syncthreads();
 }
 
 __global__ void vectorMatrixMultDelta2(float* d_delta2, float* d_delta3, float* d_W3, float* d_h2a) {
@@ -66,6 +70,7 @@ __global__ void vectorMatrixMultDelta2(float* d_delta2, float* d_delta3, float* 
     for (int i=0; i<CLASSES; i++) err+=d_delta3[i]*d_W3[j*CLASSES+i];
     __syncthreads();
     d_delta3[j]=err*drelu(d_h2a[j]);
+    __syncthreads();
 }
 
 __global__ void vectorMatrixMultDelta1(float* d_delta1, float* d_delta2, float* d_W2, float* d_h1a) {
@@ -75,6 +80,7 @@ __global__ void vectorMatrixMultDelta1(float* d_delta1, float* d_delta2, float* 
     for (int i=0; i<H2; i++) err+=d_delta2[i]*d_W2[j*H2+i];
     __syncthreads();
     d_delta1[j]=err*drelu(d_h1a[j]);
+    __syncthreads();
 }
 
 __global__ void vectorMatrixMultB3(float* d_W3, float* d_delta3, float* d_h2a, float* d_b3) {
@@ -84,6 +90,7 @@ __global__ void vectorMatrixMultB3(float* d_W3, float* d_delta3, float* d_h2a, f
         d_W3[j*CLASSES+i]+=LR*d_delta3[i]*d_h2a[j];
         d_b3[i]+=LR*d_delta3[i];
     }
+    __syncthreads();
 }
 
 __global__ void vectorMatrixMultB2(float* d_W2, float* d_delta2, float* d_h1a, float* d_b2) {
@@ -93,6 +100,7 @@ __global__ void vectorMatrixMultB2(float* d_W2, float* d_delta2, float* d_h1a, f
         d_W2[j*H2+i]+=LR*d_delta2[i]*d_h1a[j];
         d_b2[i]+=LR*d_delta2[i];
     }
+    __syncthreads();
 }
 
 __global__ void vectorMatrixMultB1(float* d_W1, float* d_delta1, float* d_train_data, float* d_b1, int n) {
@@ -102,4 +110,5 @@ __global__ void vectorMatrixMultB1(float* d_W1, float* d_delta1, float* d_train_
         d_W1[j*H1+i]+=LR*d_delta1[i]*d_train_data[n*SIZE+j];
         d_b1[i]+=LR*d_delta1[i];
     }
+    __syncthreads();
 }
