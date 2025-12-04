@@ -18,9 +18,9 @@ __global__ void softmax(float* z, float* out, int len){
     for (int i=0;i<len;i++) out[i]/=sum;
 }
 
-__global__ float relu(float x) { return x > 0 ? x : 0; }
+__host__ __device__ inline float relu(float x) { return x > 0 ? x : 0; }
 
-__global__ float drelu(float y) { return y > 0 ? 1 : 0; }
+__host__ __device__ inline float drelu(float y) { return y > 0 ? 1 : 0; }
 
 __global__ void vectorMatrixMultH1(float* d_train_data, float* d_W1, float* d_b1, float* d_h1, float* d_h1a, int n) {
     int j = blockIdx.x * blockDim.x + threadIdx.x;
