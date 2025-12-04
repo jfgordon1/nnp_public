@@ -110,6 +110,8 @@ void train_model(MODEL* model){
             cudaMemcpy(d_train_label, train_label[n], CLASSES*sizeof(float), cudaMemcpyHostToDevice);
             // ---------- Forward ----------
             
+
+
             vectorMatrixMultH1<<<1, H1>>>(d_train_data, d_W1, d_b1, d_h1);
 
             vectorMatrixMultH2<<<1, H2>>>(d_h1a, d_W2, d_b2, d_h2);
@@ -127,20 +129,7 @@ void train_model(MODEL* model){
 
             delta2Backprop<<<1, H2>>>(d_delta3, d_W3, d_h2a, d_delta2);
 
-
-            float delta2[H2];
-            for (int j=0;j<H2;j++){
-                float err=0;
-                for (int k=0;k<CLASSES;k++) err+=delta3[k]*model->W3[j*CLASSES+k];
-                delta2[j]=err*drelu(h2a[j]);
-            }
-
-            float delta1[H1];
-            for (int j=0;j<H1;j++){
-                float err=0;
-                for (int k=0;k<H2;k++) err+=delta2[k]*model->W2[j*H2+k];
-                delta1[j]=err*drelu(h1a[j]);
-            }
+            delta1Backprop<<<1, H1>>>(d_delta2, d_W2, d_h1a, d_delta1);
 
             // ---------- Update ----------
             for (int j=0;j<H2;j++)
