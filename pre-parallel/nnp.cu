@@ -105,45 +105,58 @@ void train_model(MODEL* model){
 
     for (int epoch=0; epoch<EPOCHS; epoch++) {
         float loss=0;
+        cudaMemcpyFromSymbol(&d_loss, loss, sizeof(float), cudaMemcpyHostToDevice);
         for (int n=0; n<NUM_TRAIN; n++) {
             // ---------- Forward ----------
 
             vectorMatrixMultH1<<<1, H1>>>(d_train_data, d_W1, d_b1, d_h1, d_h1a, n);
             cudaDeviceSynchronize();
+            cudaMemcpy(d_h1a, &d_h1a, H1*sizeof(float), cudaMemcpyDeviceToHost);
 
             vectorMatrixMultH2<<<1, H2>>>(d_h1a, d_W2, d_b2, d_h2, d_h2a);
             cudaDeviceSynchronize();
+            cudaMemcpy(d_h2a, &d_h2a, H2*sizeof(float), cudaMemcpyDeviceToHost);
             
             vectorMatrixMultOut<<<1, CLASSES>>>(d_h2a, d_W3, d_b3, d_out, d_outa);
             cudaDeviceSynchronize();
+            cudaMemcpy(d_outa, &d_outa, CLASSES*sizeof(float), cudaMemcpyDeviceToHost);
 
             // ---------- Loss ----------
 
             sumSubLoss<<<1, CLASSES>>>(d_train_label, d_outa, d_loss, n);
+            cudaDeviceSynchronize();
+            cudaMemcpyToSymbol(loss, &d_loss, sizeof(float), cudaMemcpyDeviceToHost);
 
             // ---------- Backprop ----------
 
             vectorAssignDelta3<<<1, CLASSES>>>(d_delta3, d_train_label, d_outa, n);
             cudaDeviceSynchronize();
+            cudaMemcpy(d_delta3, &d_delta3, CLASSES*sizeof(float), cudaMemcpyDeviceToHost);
 
             vectorMatrixMultDelta2<<<1, H2>>>(d_delta2, d_delta3, d_W3, d_h2a);
             cudaDeviceSynchronize();
+            cudaMemcpy(d_delta2, &d_delta2, H2*sizeof(float), cudaMemcpyDeviceToHost);
 
             vectorMatrixMultDelta1<<<1, H1>>>(d_delta1, d_delta2, d_W2, d_h1a);
             cudaDeviceSynchronize();
+            cudaMemcpy(d_delta1, &d_delta1, H1*sizeof(float), cudaMemcpyDeviceToHost);
 
             // ---------- Update ----------
 
             vectorMatrixMultB3<<<1, H2>>>(d_W3, d_delta3, d_h2a, d_b3);
             cudaDeviceSynchronize();
+            cudaMemcpy(d_W1, &d_W1, SIZE*H1*sizeof(float), cudaMemcpyDeviceToHost);
+            cudaMemcpy(d_b1, &d_b1, H1*sizeof(float), cudaMemcpyDeviceToHost);
 
             vectorMatrixMultB2<<<1, H1>>>(d_W2, d_delta2, d_h1a, d_b2);
             cudaDeviceSynchronize();
+            cudaMemcpy(d_W2, &d_W2, H1*H2*sizeof(float), cudaMemcpyDeviceToHost);
+            cudaMemcpy(d_b2, &d_b2, H2*sizeof(float), cudaMemcpyDeviceToHost);
 
             vectorMatrixMultB1<<<1, SIZE>>>(d_W1, d_delta1, d_train_label, d_b1, n);
             cudaDeviceSynchronize();
-
-            cudaMemcpyToSymbol(loss, &d_loss, sizeof(float), cudaMemcpyDeviceToHost);
+            cudaMemcpy(d_W3, &d_W3, H2*CLASSES*sizeof(float), cudaMemcpyDeviceToHost);
+            cudaMemcpy(d_b3, &d_b3, CLASSES*sizeof(float), cudaMemcpyDeviceToHost);
         }
         printf("Epoch %d, Loss=%.4f\n", epoch, loss/NUM_TRAIN);
     }
