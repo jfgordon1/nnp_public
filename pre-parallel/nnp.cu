@@ -38,7 +38,7 @@ float relu(float x) { return x > 0 ? x : 0; }
 * Returns:
 *   derivative value
 */
-float drelu(float y) { return y > 0 ? 1 : 0; }
+//float drelu(float y) { return y > 0 ? 1 : 0; }
 
 /* Softmax activation function
 * Arguments:
@@ -75,13 +75,23 @@ void train_model(MODEL* model){
     init_weights(model->W2, H1*H2); init_weights(model->b2, H2);
     init_weights(model->W3, H2*CLASSES); init_weights(model->b3, CLASSES);
 
-	float* d_W1, d_W2, d_W3;
-	float* d_b1, d_b2, d_b3;
-	float* d_train_data, d_train_label;
-	float* d_delta1, d_delta2, d_delta3;
-	float* d_h1, d_h2;
-    float* d_h1a, d_h2a;
-    float* d_out, d_outa;
+	float* d_W1;
+    float* d_W2; 
+    float* d_W3;
+	float* d_b1;
+    float* d_b2;
+    float* d_b3;
+	float* d_train_data;
+    float* d_train_label;
+	float* d_delta1;
+    float* d_delta2;
+    float* d_delta3;
+	float* d_h1;
+    float* d_h2;
+    float* d_h1a;
+    float* d_h2a;
+    float* d_out;
+    float* d_outa;
     float* d_loss;
 
 
@@ -110,14 +120,13 @@ void train_model(MODEL* model){
             cudaMemcpy(d_train_label, train_label[n], CLASSES*sizeof(float), cudaMemcpyHostToDevice);
             // ---------- Forward ----------
 
-            vectorMatrixMultH1<<<1, H1>>>(d_train_data, d_W1, d_b1, d_h1);
+            vectorMatrixMultH1<<<1, H1>>>(d_train_data, d_W1, d_b1, d_h1, d_h1a);
 
-            vectorMatrixMultH2<<<1, H2>>>(d_h1a, d_W2, d_b2, d_h2);
+            vectorMatrixMultH2<<<1, H2>>>(d_h1a, d_W2, d_b2, d_h2, d_h2a);
 
             vectorMatrixMultOut<<<1, CLASSES>>>(d_h2a, d_W3, d_b3, d_out);
-            __syncthreads();
 
-            softmax<<<1, CLASSES>>>(d_out, d_outa, CLASSES);
+            kernelSoftMax<<<1, CLASSES>>>(d_out, d_outa, CLASSES);
 
             // ---------- Loss ----------
             kernelLoss<<<1, CLASSES>>>(d_outa, d_train_label, d_loss);
@@ -129,7 +138,6 @@ void train_model(MODEL* model){
 
             delta1Backprop<<<1, H1>>>(d_delta2, d_W2, d_h1a, d_delta1);
 
-            __syncthreads();
 
             // ---------- Update ----------
             updateClasses<<<1, H2>>>(d_delta3, d_h2a, d_W3);
@@ -144,7 +152,6 @@ void train_model(MODEL* model){
 
             updateBias1<<<1, H1>>>(d_delta1, d_b1);
 
-            __syncthreads();
             cudaMemcpy(&loss, d_loss, sizeof(float), cudaMemcpyDeviceToHost);
         }
         printf("Epoch %d, Loss=%.4f\n", epoch, loss/NUM_TRAIN);

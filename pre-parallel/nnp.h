@@ -19,11 +19,8 @@ typedef struct tagMODEL{
 } MODEL;
 
 // Activation function and derivative
-float relu(float x);
-float drelu(float y);
 
 //function prototypes
-void softmax(float *z, float *out, int len);
 void init_weights(float *w, int size);
 void train_model(MODEL* model);
 void save_model(MODEL* model);
