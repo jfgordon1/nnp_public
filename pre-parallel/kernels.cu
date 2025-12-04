@@ -44,22 +44,22 @@ __global__ void vectorMatrixMultOut(float* d_h2a, float* d_W3, float* d_b3, floa
     int j = blockIdx.x * blockDim.x + threadIdx.x;
     if (j >= CLASSES) return;
     d_out[j]=d_b3[j];
-    for (int i=0; i<H2; i++) d_out[i]+=d_h2a[i]*d_W3[i*CLASSES+j];
+    for (int i=0; i<H2; i++) d_out[j]+=d_h2a[i]*d_W3[i*CLASSES+j];
     __syncthreads();
     if (j == 0) softmax(d_out, d_outa, CLASSES);
 }
 
-__global__ void sumSubLoss(float* d_train_label, float* d_outa, float* d_loss, int n) {
+__global__ void sumSubLoss(float* d_train_label, float* d_outa, float loss, int n) {
     int j = blockIdx.x * blockDim.x + threadIdx.x;
     if (j >= CLASSES) return;
-    *d_loss -= d_train_label[n*CLASSES+j]*logf(d_outa[j]+1e-8f);
+    loss -= d_train_label[n*CLASSES+j]*logf(d_outa[j]+1e-8f);
     __syncthreads();
 }
 
 __global__ void vectorAssignDelta3(float* d_delta3, float* d_train_label, float* d_outa, int n) {
     int j = blockIdx.x * blockDim.x + threadIdx.x;
     if (j >= CLASSES) return;
-    d_delta3[j] = d_train_label[n*SIZE+j]-d_outa[j];
+    d_delta3[j] = d_train_label[n*CLASSES+j]-d_outa[j];
     __syncthreads();
 }
 
@@ -69,7 +69,7 @@ __global__ void vectorMatrixMultDelta2(float* d_delta2, float* d_delta3, float* 
     float err=0;
     for (int i=0; i<CLASSES; i++) err+=d_delta3[i]*d_W3[j*CLASSES+i];
     __syncthreads();
-    d_delta3[j]=err*drelu(d_h2a[j]);
+    d_delta2[j]=err*drelu(d_h2a[j]);
     __syncthreads();
 }
 
