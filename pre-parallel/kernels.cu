@@ -17,6 +17,34 @@ __global__ void softmax(flaot* z, float* out, int len){
   for (int i=0;i<len;i++) out[i]/=sum;
 }
 
-__global__ inline float relu(float x) { return x > 0 ? x : 0; }
+__host__ inline float relu(float x) { return x > 0 ? x : 0; }
 
-__global__ inline float drelu(float y) { return y > 0 ? 1 : 0; }
+__host__ inline float drelu(float y) { return y > 0 ? 1 : 0; }
+
+__global__ void vectorMatrixMultH1(float* d_train_data, float* d_W1, float* d_b1, float* d_h1){
+    int j = blockIdx.x * blockDim.x + threadIdx.x;
+    if (j >= H1) return;
+    d_h1[j]=d_b1[j];
+    for (int i=0;i<SIZE;i++) d_h1[j]+=d_train_data[i]*d_W1[i*H1+j];
+    d_h1a[j]=relu(d_h1[j]);
+}
+
+__global__ void vectorMatrixMultH2(float* d_h1a, float* d_W2, float* d_b2, float* d_h2){
+    int j = blockIdx.x * blockDim.x + threadIdx.x;
+    if (j >= H2) return;
+    d_h2[j]=d_b2[j];
+    for (int i=0;i<H1;i++) d_h2[j]+=d_h1a[i]*d_W2[i*H2+j];
+    d_h2a[j]=relu(d_h2[j]);
+}
+
+__global__ void vectorMatrixMultOut(float* d_h2a, float* d_W3, float* d_b3, float* d_out){
+    int j = blockIdx.x * blockDim.x + threadIdx.x;
+    if (j >= CLASSES) return;
+    d_out[j]=d_b3[j];
+    for (int i=0;i<H2;i++) d_out[j]+=d_h2a[i]*d_W3[i*CLASSES+j];
+}
+
+__global__ void kernelLoss(float* d_outa, float* d_train_label, float* d_loss){
+    int k = blockIdx.x * blockDim.x + threadIdx.x;
+    d_loss -= d_train_label[k]*logf(d_outa[k]+1e-8f);
+}
