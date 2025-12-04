@@ -123,9 +123,10 @@ void train_model(MODEL* model){
             kernelLoss<<<1, CLASSES>>>(d_outa, d_train_label, d_loss);
 
             // ---------- Backprop ----------
-            float delta3[CLASSES];
-            for (int k=0;k<CLASSES;k++)
-                delta3[k] = train_label[n][k]-outa[k];
+            delta3Backprop<<<1, CLASSES>>>(d_outa, d_train_label, d_delta3);
+
+            delta2Backprop<<<1, H2>>>(d_delta3, d_W3, d_h2a, d_delta2);
+
 
             float delta2[H2];
             for (int j=0;j<H2;j++){

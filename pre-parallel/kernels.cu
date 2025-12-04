@@ -48,3 +48,22 @@ __global__ void kernelLoss(float* d_outa, float* d_train_label, float* d_loss){
     int k = blockIdx.x * blockDim.x + threadIdx.x;
     d_loss -= d_train_label[k]*logf(d_outa[k]+1e-8f);
 }
+
+__global__ void delta3Backprop(d_outa, d_train_label, d_delta3){
+    int k = blockIdx.x * blockDim.x + threadIdx.x;
+    d_delta3[k] = d_train_label[k]-d_outa[k];
+}
+
+__global__ void delta2Backprop(d_delta3, d_W3, d_h2a, d_delta2){
+    int j = blockIdx.x * blockDim.x + threadIdx.x;
+    float err=0;
+    for (int k=0;k<CLASSES;k++) err+=d_delta3[k]*d_W3[j*CLASSES+k];
+    d_delta2[j]=err*drelu(d_h2a[j]);
+}
+
+__global__ void delta1Backprop(d_delta2, d_W2, d_h1a, d_delta1){
+    int j = blockIdx.x * blockDim.x + threadIdx.x;
+    float err=0;
+    for (int k=0;k<H2;k++) err+=d_delta2[k]*d_W2[j*H2+k];
+    d_delta1[j]=err*drelu(d_h1a[j]);
+}
