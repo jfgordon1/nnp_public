@@ -110,70 +110,70 @@ void train_model(MODEL* model){
             // ---------- Forward ----------
 
             vectorMatrixMultH1<<<1, H1>>>(d_train_data, d_W1, d_b1, d_h1, d_h1a, n);
-            cudaError_t err = cudaGetLastError();
-            printf("Kernel launch error: %s\n", cudaGetErrorString(err));
+            cudaError_t err1 = cudaGetLastError();
+            printf("Kernel launch error: %s\n", cudaGetErrorString(err1));
             cudaDeviceSynchronize();
             cudaMemcpy(d_h1a, d_h1a, H1*sizeof(float), cudaMemcpyDeviceToHost);
 
             vectorMatrixMultH2<<<1, H2>>>(d_h1a, d_W2, d_b2, d_h2, d_h2a);
-            cudaError_t err = cudaGetLastError();
-            printf("Kernel launch error: %s\n", cudaGetErrorString(err));
+            cudaError_t err2 = cudaGetLastError();
+            printf("Kernel launch error: %s\n", cudaGetErrorString(err2));
             cudaDeviceSynchronize();
             cudaMemcpy(d_h2a, d_h2a, H2*sizeof(float), cudaMemcpyDeviceToHost);
             
             vectorMatrixMultOut<<<1, CLASSES>>>(d_h2a, d_W3, d_b3, d_out, d_outa);
-            cudaError_t err = cudaGetLastError();
-            printf("Kernel launch error: %s\n", cudaGetErrorString(err));
+            cudaError_t err3 = cudaGetLastError();
+            printf("Kernel launch error: %s\n", cudaGetErrorString(err3));
             cudaDeviceSynchronize();
             cudaMemcpy(d_outa, d_outa, CLASSES*sizeof(float), cudaMemcpyDeviceToHost);
 
             // ---------- Loss ----------
 
             sumSubLoss<<<1, CLASSES>>>(d_train_label, d_outa, d_loss, n);
-            cudaError_t err = cudaGetLastError();
-            printf("Kernel launch error: %s\n", cudaGetErrorString(err));
+            cudaError_t err4 = cudaGetLastError();
+            printf("Kernel launch error: %s\n", cudaGetErrorString(err4));
             cudaDeviceSynchronize();
             cudaMemcpyToSymbol(loss, d_loss, sizeof(float), cudaMemcpyDeviceToHost);
 
             // ---------- Backprop ----------
 
             vectorAssignDelta3<<<1, CLASSES>>>(d_delta3, d_train_label, d_outa, n);
-            cudaError_t err = cudaGetLastError();
-            printf("Kernel launch error: %s\n", cudaGetErrorString(err));
+            cudaError_t err5 = cudaGetLastError();
+            printf("Kernel launch error: %s\n", cudaGetErrorString(err5));
             cudaDeviceSynchronize();
             cudaMemcpy(d_delta3, d_delta3, CLASSES*sizeof(float), cudaMemcpyDeviceToHost);
 
             vectorMatrixMultDelta2<<<1, H2>>>(d_delta2, d_delta3, d_W3, d_h2a);
-            cudaError_t err = cudaGetLastError();
-            printf("Kernel launch error: %s\n", cudaGetErrorString(err));
+            cudaError_t err6 = cudaGetLastError();
+            printf("Kernel launch error: %s\n", cudaGetErrorString(err6));
             cudaDeviceSynchronize();
             cudaMemcpy(d_delta2, d_delta2, H2*sizeof(float), cudaMemcpyDeviceToHost);
 
             vectorMatrixMultDelta1<<<1, H1>>>(d_delta1, d_delta2, d_W2, d_h1a);
-            cudaError_t err = cudaGetLastError();
-            printf("Kernel launch error: %s\n", cudaGetErrorString(err));
+            cudaError_t err7 = cudaGetLastError();
+            printf("Kernel launch error: %s\n", cudaGetErrorString(err7));
             cudaDeviceSynchronize();
             cudaMemcpy(d_delta1, d_delta1, H1*sizeof(float), cudaMemcpyDeviceToHost);
 
             // ---------- Update ----------
 
             vectorMatrixMultB3<<<1, H2>>>(d_W3, d_delta3, d_h2a, d_b3);
-            cudaError_t err = cudaGetLastError();
-            printf("Kernel launch error: %s\n", cudaGetErrorString(err));
+            cudaError_t err8 = cudaGetLastError();
+            printf("Kernel launch error: %s\n", cudaGetErrorString(err8));
             cudaDeviceSynchronize();
             cudaMemcpy(d_W1, d_W1, SIZE*H1*sizeof(float), cudaMemcpyDeviceToHost);
             cudaMemcpy(d_b1, d_b1, H1*sizeof(float), cudaMemcpyDeviceToHost);
 
             vectorMatrixMultB2<<<1, H1>>>(d_W2, d_delta2, d_h1a, d_b2);
-            cudaError_t err = cudaGetLastError();
-            printf("Kernel launch error: %s\n", cudaGetErrorString(err));
+            cudaError_t err9 = cudaGetLastError();
+            printf("Kernel launch error: %s\n", cudaGetErrorString(err9));
             cudaDeviceSynchronize();
             cudaMemcpy(d_W2, d_W2, H1*H2*sizeof(float), cudaMemcpyDeviceToHost);
             cudaMemcpy(d_b2, d_b2, H2*sizeof(float), cudaMemcpyDeviceToHost);
 
             vectorMatrixMultB1<<<1, SIZE>>>(d_W1, d_delta1, d_train_label, d_b1, n);
-            cudaError_t err = cudaGetLastError();
-            printf("Kernel launch error: %s\n", cudaGetErrorString(err));
+            cudaError_t err10 = cudaGetLastError();
+            printf("Kernel launch error: %s\n", cudaGetErrorString(err10));
             cudaDeviceSynchronize();
             cudaMemcpy(d_W3, d_W3, H2*CLASSES*sizeof(float), cudaMemcpyDeviceToHost);
             cudaMemcpy(d_b3, d_b3, CLASSES*sizeof(float), cudaMemcpyDeviceToHost);
