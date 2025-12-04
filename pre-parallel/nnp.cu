@@ -30,7 +30,7 @@
 * Returns:
 *   activated value based on ReLU function 
 */
-float relu(float x) { return x > 0 ? x : 0; }
+//float relu(float x) { return x > 0 ? x : 0; }
 
 /* Derivative of ReLU activation function
 * Arguments:
@@ -38,7 +38,7 @@ float relu(float x) { return x > 0 ? x : 0; }
 * Returns:
 *   derivative value
 */
-float drelu(float y) { return y > 0 ? 1 : 0; }
+//float drelu(float y) { return y > 0 ? 1 : 0; }
 
 /* Softmax activation function
 * Arguments:
@@ -46,13 +46,13 @@ float drelu(float y) { return y > 0 ? 1 : 0; }
 *   out: output array to store softmax results
 *   len: length of the input/output arrays
 */ 
-void softmax(float *z, float *out, int len) {
-    float max = z[0];
-    for (int i=1;i<len;i++) if (z[i]>max) max=z[i];
-    float sum=0;
-    for (int i=0;i<len;i++){ out[i]=expf(z[i]-max); sum+=out[i]; }
-    for (int i=0;i<len;i++) out[i]/=sum;
-}
+//void softmax(float *z, float *out, int len) {
+//    float max = z[0];
+//    for (int i=1;i<len;i++) if (z[i]>max) max=z[i];
+//    float sum=0;
+//    for (int i=0;i<len;i++){ out[i]=expf(z[i]-max); sum+=out[i]; }
+//    for (int i=0;i<len;i++) out[i]/=sum;
+//}
 
 /* Initialize weights with small random values
 * Arguments:
@@ -81,7 +81,8 @@ void train_model(MODEL* model){
 	float* d_delta1, * d_delta2, * d_delta3;
 	float* d_h1, * d_h1a, * d_h2, * d_h2a;
     float* d_out, * d_outa;
-
+    float* d_loss;
+    
 	cudaMalloc((void**)&d_W1, SIZE*H1*sizeof(float)); cudaMalloc((void**)&d_b1, H1*sizeof(float));
 	cudaMalloc((void**)&d_W2, H1*H2*sizeof(float)); cudaMalloc((void**)&d_b2, H2*sizeof(float));
 	cudaMalloc((void**)&d_W3, CLASSES*H2*sizeof(float)); cudaMalloc((void**)&d_b3, CLASSES*sizeof(float));
@@ -94,6 +95,8 @@ void train_model(MODEL* model){
     cudaMalloc((void**)&d_h2, H2*sizeof(float)); cudaMalloc((void**)&d_h2a, H2*sizeof(float));
     cudaMalloc((void**)&d_out, CLASSES*sizeof(float)); cudaMalloc((void**)&d_outa, CLASSES*sizeof(float));
     
+    cudaMalloc((void**)&d_loss, sizeof(float));
+
     cudaMemcpy((void**)&d_train_data, train_data, NUM_TRAIN*SIZE*sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy((void**)&d_train_label, train_label, NUM_TRAIN*CLASSES*sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy((void**)&d_W1, model->W1, SIZE*H1*sizeof(float), cudaMemcpyHostToDevice); cudaMemcpy((void**)&d_b1, model->b1, H1*sizeof(float), cudaMemcpyHostToDevice);
@@ -105,94 +108,42 @@ void train_model(MODEL* model){
         for (int n=0; n<NUM_TRAIN; n++) {
             // ---------- Forward ----------
 
-            vectorMatrixMultH1<<<1, H1>>>(d_train_data, d_W1, d_b1, d_h1, n);
-
-            vectorMatrixMultH2<<<1, H2>>>(d_h1a, d_W2, d_b2, d_h2);
-
-            vectorMatrixMultOut<<<1, CLASSES>>>(d_h2a, d_W3, d_b3, d_out, d_outa);
-
+            vectorMatrixMultH1<<<1, H1>>>(d_train_data, d_W1, d_b1, d_h1, d_h1a, n);
             cudaDeviceSynchronize();
-          
-            // float h1[H1], h1a[H1];
-            // for (int j=0;j<H1;j++){
-            //     h1[j]=model->b1[j];
-            //     for (int i=0;i<SIZE;i++) h1[j]+=train_data[n][i]*model->W1[i*H1+j];
-            //     h1a[j]=relu(h1[j]);
-            // }
-            // float h2[H2], h2a[H2];
-            // for (int j=0;j<H2;j++){
-            //     h2[j]=model->b2[j];
-            //     for (int i=0;i<H1;i++) h2[j]+=h1a[i]*model->W2[i*H2+j];
-            //     h2a[j]=relu(h2[j]);
-            // }
-            // float out[CLASSES], outa[CLASSES];
-            // for (int k=0;k<CLASSES;k++){
-            //     out[k]=model->b3[k];
-            //     for (int j=0;j<H2;j++) out[k]+=h2a[j]*model->W3[j*CLASSES+k];
-            // }
-            // softmax(out,outa,CLASSES);
+
+            vectorMatrixMultH2<<<1, H2>>>(d_h1a, d_W2, d_b2, d_h2, d_h2a);
+            cudaDeviceSynchronize();
+            
+            vectorMatrixMultOut<<<1, CLASSES>>>(d_h2a, d_W3, d_b3, d_out, d_outa);
+            cudaDeviceSynchronize();
 
             // ---------- Loss ----------
 
-            sumSubLoss<<<1, CLASSES>>>(d_train_label, d_outa, n);
-
-            // for (int k=0;k<CLASSES;k++)
-            //     loss -= train_label[n][k]*logf(outa[k]+1e-8f);
+            sumSubLoss<<<1, CLASSES>>>(d_train_label, d_outa, d_loss, n);
 
             // ---------- Backprop ----------
 
             vectorAssignDelta3<<<1, CLASSES>>>(d_delta3, d_train_label, d_outa, n);
-
-            vectorMatrixMultDelta2<<<1, H2>>>(d_delta2, d_delta3, d_W3, d_h2a);
-            
-            vectorMatrixMultDelta1<<<1, H1>>>(d_delta1, d_delta2, d_W2, d_h1a);
-
             cudaDeviceSynchronize();
 
-            // float delta3[CLASSES];
-            // for (int k=0;k<CLASSES;k++)
-            //     delta3[k] = train_label[n][k]-outa[k];
+            vectorMatrixMultDelta2<<<1, H2>>>(d_delta2, d_delta3, d_W3, d_h2a);
+            cudaDeviceSynchronize();
 
-            // float delta2[H2];
-            // for (int j=0;j<H2;j++){
-            //     float err=0;
-            //     for (int k=0;k<CLASSES;k++) err+=delta3[k]*model->W3[j*CLASSES+k];
-            //     delta2[j]=err*drelu(h2a[j]);
-            // }
-
-            // float delta1[H1];
-            // for (int j=0;j<H1;j++){
-            //     float err=0;
-            //     for (int k=0;k<H2;k++) err+=delta2[k]*model->W2[j*H2+k];
-            //     delta1[j]=err*drelu(h1a[j]);
-            // }
+            vectorMatrixMultDelta1<<<1, H1>>>(d_delta1, d_delta2, d_W2, d_h1a);
+            cudaDeviceSynchronize();
 
             // ---------- Update ----------
 
             vectorMatrixMultB3<<<1, H2>>>(d_W3, d_delta3, d_h2a, d_b3);
-
-            vectorMatrixMultB2<<<1, H1>>>(d_W2, d_delta2, d_h1a, d_b2);
-
-            vectorMatrixMultB1<<<1, SIZE>>>(d_W1, d_delta1, d_train_label, d_b1, n);
-
             cudaDeviceSynchronize();
 
-            // for (int j=0;j<H2;j++)
-            //     for (int k=0;k<CLASSES;k++)
-            //         model->W3[j*CLASSES+k]+=LR*delta3[k]*h2a[j];
-            // for (int k=0;k<CLASSES;k++) model->b3[k]+=LR*delta3[k];
+            vectorMatrixMultB2<<<1, H1>>>(d_W2, d_delta2, d_h1a, d_b2);
+            cudaDeviceSynchronize();
 
-            // for (int j=0;j<H1;j++)
-            //     for (int k=0;k<H2;k++)
-            //         model->W2[j*H2+k]+=LR*delta2[k]*h1a[j];
-            // for (int k=0;k<H2;k++) model->b2[k]+=LR*delta2[k];
+            vectorMatrixMultB1<<<1, SIZE>>>(d_W1, d_delta1, d_train_label, d_b1, n);
+            cudaDeviceSynchronize();
 
-            // for (int i=0;i<SIZE;i++)
-            //     for (int j=0;j<H1;j++)
-            //         model->W1[i*H1+j]+=LR*delta1[j]*train_data[n][i];
-            // for (int j=0;j<H1;j++) model->b1[j]+=LR*delta1[j];
-
-            cudaMemcpyToSymbol(loss, &d_loss, sizeof(int), cudaMemcpyDeviceToHost);
+            cudaMemcpyToSymbol(loss, &d_loss, sizeof(float), cudaMemcpyDeviceToHost);
         }
         printf("Epoch %d, Loss=%.4f\n", epoch, loss/NUM_TRAIN);
     }
@@ -207,7 +158,7 @@ void train_model(MODEL* model){
     cudaFree(d_train_data); cudaFree(d_train_label);
     cudaFree(d_delta1); cudaFree(d_delta2); cudaFree(d_delta3);
     cudaFree(d_h1); cudaFree(d_h1a); cudaFree(d_h2); cudaFree(d_h2a);
-    cudaFree(d_out); cudaFree(d_outa);
+    cudaFree(d_out); cudaFree(d_outa); cudaFree(d_loss);
 }   
 
 /* Save the trained model to a binary file

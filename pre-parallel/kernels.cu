@@ -10,8 +10,6 @@
 #include "config.h"
 #include "kernels.h"
 
-__device__ float d_loss = 0;
-
 __global__ void softmax(float* z, float* out, int len){
     float max = z[0];
     for (int i = 1; i<len;i++) if (z[i]>max) max = z[i];
@@ -20,22 +18,24 @@ __global__ void softmax(float* z, float* out, int len){
     for (int i=0;i<len;i++) out[i]/=sum;
 }
 
-__global__ inline float relu(float x) { return x > 0 ? x : 0; }
+__global__ float relu(float x) { return x > 0 ? x : 0; }
 
-__global__ inline float drelu(float y) { return y > 0 ? 1 : 0; }
+__global__ float drelu(float y) { return y > 0 ? 1 : 0; }
 
-__global__ void vectorMatrixMultH1(float* d_train_data, float* d_W1, float* d_b1, float* d_h1, int n) {
+__global__ void vectorMatrixMultH1(float* d_train_data, float* d_W1, float* d_b1, float* d_h1, float* d_h1a, int n) {
     int j = blockIdx.x * blockDim.x + threadIdx.x;
     if (j >= H1) return;
     d_h1[j]=d_b1[j];
     for (int i=0; i<SIZE; i++) d_h1[j]+=d_train_data[n*SIZE+i]*d_W1[i*H1+j];
+    d_h1a[j]=relu(d_h1[j]);
 }
 
-__global__ void vectorMatrixMultH2(float* d_h1a, float* d_W2, float* d_b2, float* d_h2) {
+__global__ void vectorMatrixMultH2(float* d_h1a, float* d_W2, float* d_b2, float* d_h2, float* d_h2a) {
     int j = blockIdx.x * blockDim.x + threadIdx.x;
     if (j >= H2) return;
     d_h2[j]=d_b2[j];
     for (int i=0; i<H1; i++) d_h2[j]+=d_h1a[i]*d_W2[i*H2+j];
+    d_h2a[j]=relu(d_h2[j]);
 }
 
 __global__ void vectorMatrixMultOut(float* d_h2a, float* d_W3, float* d_b3, float* d_out, float* d_outa) {
@@ -47,10 +47,10 @@ __global__ void vectorMatrixMultOut(float* d_h2a, float* d_W3, float* d_b3, floa
     if (j == 0) softmax(d_out, d_outa, CLASSES);
 }
 
-__global__ void sumSubLoss(float* d_train_label, float* d_outa, int n) {
+__global__ void sumSubLoss(float* d_train_label, float* d_outa, float* d_loss, int n) {
     int j = blockIdx.x * blockDim.x + threadIdx.x;
     if (j >= CLASSES) return;
-    d_loss -= d_train_label[n*CLASSES+j]*logf(d_outa[j]+1e-8f);
+    *d_loss -= d_train_label[n*CLASSES+j]*logf(d_outa[j]+1e-8f);
 }
 
 __global__ void vectorAssignDelta3(float* d_delta3, float* d_train_label, float* d_outa, int n) {

@@ -8,14 +8,13 @@
 
 // Kernel function prototypes
 //__global__ void test_kernel()
-__device__ float d_loss;
 __global__ void softmax(float* z, float* out, int len);
-__global__ inline float relu(float x);
-__global__ inline float drelu(float y);
-__global__ void vectorMatrixMultH1(float* d_train_data, float* d_W1, float* d_b1, float* d_h1, int n);
-__global__ void vectorMatrixMultH2(float* d_h1a, float* d_W2, float* d_b2, float* d_h2);
+__global__ float relu(float x);
+__global__ float drelu(float y);
+__global__ void vectorMatrixMultH1(float* d_train_data, float* d_W1, float* d_b1, float* d_h1, float* d_h1a, int n);
+__global__ void vectorMatrixMultH2(float* d_h1a, float* d_W2, float* d_b2, float* d_h2, float* d_h2a);
 __global__ void vectorMatrixMultOut(float* d_h2a, float* d_W3, float* d_b3, float* d_out, float* d_outa);
-__global__ void sumSubLoss(float* d_train_label, float* d_outa, int n);
+__global__ void sumSubLoss(float* d_train_label, float* d_outa, float* d_loss, int n);
 __global__ void vectorAssignDelta3(float* d_delta3, float* d_train_label, float* d_outa, int n);
 __global__ void vectorMatrixMultDelta2(float* d_delta2, float* d_delta3, float* d_W3, float* d_h2a);
 __global__ void vectorMatrixMultDelta1(float* d_delta1, float* d_delta2, float* d_W2, float* d_h1a);
