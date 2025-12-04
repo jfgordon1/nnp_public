@@ -67,3 +67,39 @@ __global__ void delta1Backprop(float* d_delta2, float* d_W2, float* d_h1a, float
     for (int k=0;k<H2;k++) err+=d_delta2[k]*d_W2[j*H2+k];
     d_delta1[j]=err*drelu(d_h1a[j]);
 }
+
+__global__ void updateClasses(float* d_delta3, float* d_h2a, float* d_W3){
+    int j = blockIdx.x * blockDim.x + threadIdx.x;
+    for (int k=0;k<CLASSES;k++){
+        d_W3[j*CLASSES+k]+=LR*d_delta3[k]*d_h2a[j];
+    }
+}
+
+__global__ void updateH2(float* d_delta2, float* d_h1a, float* d_W2){
+    int j = blockIdx.x * blockDim.x + threadIdx.x;
+    for (int k=0;k<H2;k++){
+        d_W2[j*H2+k]+=LR*d_delta2[k]*d_h1a[j];
+    }
+}
+
+__global__ void updateH1(float* d_delta1, float* d_train_data, float* d_W1){
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    for (int j=0;j<H1;j++){
+        d_W1[i*H1+j]+=LR*d_delta1[j]*d_train_data[i];
+    }
+}
+
+__global__ void updateBias3(float* d_delta3, float* d_b3){
+    int k = blockIdx.x * blockDim.x + threadIdx.x;
+    d_b3[k]+=LR*d_delta3[k];
+}
+
+__global__ void updateBias2(float* d_delta2, float* d_b2){
+    int k = blockIdx.x * blockDim.x + threadIdx.x;
+    d_b2[k]+=LR*d_delta2[k];
+}
+
+__global__ void updateBias1(float* d_delta1, float* d_b1){
+    int j = blockIdx.x * blockDim.x + threadIdx.x;
+    d_b1[j]+=LR*d_delta1[j];
+}

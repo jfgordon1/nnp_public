@@ -109,8 +109,6 @@ void train_model(MODEL* model){
             cudaMemcpy(d_train_data, train_data[n], SIZE*sizeof(float), cudaMemcpyHostToDevice);
             cudaMemcpy(d_train_label, train_label[n], CLASSES*sizeof(float), cudaMemcpyHostToDevice);
             // ---------- Forward ----------
-            
-
 
             vectorMatrixMultH1<<<1, H1>>>(d_train_data, d_W1, d_b1, d_h1);
 
@@ -131,24 +129,40 @@ void train_model(MODEL* model){
 
             delta1Backprop<<<1, H1>>>(d_delta2, d_W2, d_h1a, d_delta1);
 
+            __syncthreads();
+
             // ---------- Update ----------
-            for (int j=0;j<H2;j++)
-                for (int k=0;k<CLASSES;k++)
-                    model->W3[j*CLASSES+k]+=LR*delta3[k]*h2a[j];
-            for (int k=0;k<CLASSES;k++) model->b3[k]+=LR*delta3[k];
+            updateClasses<<<1, H2>>>(d_delta3, d_h2a, d_W3);
 
-            for (int j=0;j<H1;j++)
-                for (int k=0;k<H2;k++)
-                    model->W2[j*H2+k]+=LR*delta2[k]*h1a[j];
-            for (int k=0;k<H2;k++) model->b2[k]+=LR*delta2[k];
+            updateBias3<<<1, CLASSES>>>(d_delta3, d_b3);
 
-            for (int i=0;i<SIZE;i++)
-                for (int j=0;j<H1;j++)
-                    model->W1[i*H1+j]+=LR*delta1[j]*train_data[n][i];
-            for (int j=0;j<H1;j++) model->b1[j]+=LR*delta1[j];
+            updateH2<<<1, H1>>>(d_delta2, d_h1a, d_W2);
+
+            updateBias2<<<1, H2>>>(d_delta2, d_b2);
+
+            updateH1<<<1, SIZE>>>(d_delta1, d_train_data, d_W1);
+
+            updateBias1<<<1, H1>>>(d_delta1, d_b1);
+
+            __syncthreads();
+            cudaMemcpy(&loss, d_loss, sizeof(float), cudaMemcpyDeviceToHost);
         }
         printf("Epoch %d, Loss=%.4f\n", epoch, loss/NUM_TRAIN);
     }
+
+    cudaMemcpy(model->W1, d_W1, SIZE*H1*sizeof(float), cudaMemcpyDeviceToHost); cudaMemcpy(model->b1, d_b1, H1*sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(model->W2, d_W2, H1*H2*sizeof(float), cudaMemcpyDeviceToHost); cudaMemcpy(model->b2, d_b2, H2*sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(model->W3, d_W3, H2*CLASSES*sizeof(float), cudaMemcpyDeviceToHost); cudaMemcpy(model->b3, d_b3, CLASSES*sizeof(float), cudaMemcpyDeviceToHost);
+
+    cudaFree(d_W1); cudaFree(d_b1);
+    cudaFree(d_W2); cudaFree(d_b2);
+    cudaFree(d_W3); cudaFree(d_b3);
+    cudaFree(d_train_data); cudaFree(d_train_label);
+    cudaFree(d_delta1); cudaFree(d_delta2); cudaFree(d_delta3);
+    cudaFree(d_h1); cudaFree(d_h2);
+    cudaFree(d_h1a); cudaFree(d_h2a);
+    cudaFree(d_out); cudaFree(d_outa);
+    cudaFree(d_loss);
 }
 
 /* Save the trained model to a binary file
