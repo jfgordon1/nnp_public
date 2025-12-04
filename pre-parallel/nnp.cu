@@ -138,7 +138,7 @@ void train_model(MODEL* model){
         float loss = 0;
         cudaMemcpy(&loss, d_loss, sizeof(float), cudaMemcpyDeviceToHost);
         printf("Epoch %d, Loss=%.4f\n", epoch, loss/NUM_TRAIN);
-        fflush(stdout); // test
+        fflush(stdout);
     }
 
     cudaMemcpy(model->W1, d_W1, SIZE*H1*sizeof(float), cudaMemcpyDeviceToHost); cudaMemcpy(model->b1, d_b1, H1*sizeof(float), cudaMemcpyDeviceToHost);
