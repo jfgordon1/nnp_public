@@ -23,7 +23,7 @@ typedef struct tagMODEL{
 //float drelu(float y);
 
 //function prototypes
-void softmax(float *z, float *out, int len);
+//void softmax(float *z, float *out, int len);
 void init_weights(float *w, int size);
 void train_model(MODEL* model);
 void save_model(MODEL* model);
