@@ -1,6 +1,7 @@
 /* 
  * kernels.h
- *
+ *  Jacob Gordon
+ *  Tristan Dendorfer
  *  Created on: Nov 9, 2025
  *  
  *  Placeholder Header file for CUDA kernel functions
