@@ -17,7 +17,7 @@ __host__ __device__ float drelu(float y) { return y > 0 ? 1 : 0; }
 __global__ void vectorMatrixMultH1(float* d_train_data, float* d_W1, float* d_b1, float* d_h1, float* d_h1a, int n) {
     int j = threadIdx.x;
     if (j >= H1) return;
-    float temp = d_b1[j;]
+    float temp = d_b1[j];
     //d_h1[j]=d_b1[j];
     for (int i=0; i<SIZE; i++) temp+=d_train_data[n*SIZE+i]*d_W1[i*H1+j];
     d_h1[j]=temp;
