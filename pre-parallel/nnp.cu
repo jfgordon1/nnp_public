@@ -81,6 +81,8 @@ void train_model(MODEL* model){
 	float* d_delta1, *d_delta2, *d_delta3;
 	float* d_h1, *d_h1a, *d_h2, *d_h2a;
     float* d_out, *d_outa;
+    float* d_max;
+
     //float* d_loss;
     
 	cudaMalloc(&d_W1, SIZE*H1*sizeof(float)); cudaMalloc(&d_b1, H1*sizeof(float));
@@ -95,6 +97,7 @@ void train_model(MODEL* model){
     cudaMalloc(&d_h2, H2*sizeof(float)); cudaMalloc(&d_h2a, H2*sizeof(float));
     cudaMalloc(&d_out, CLASSES*sizeof(float)); cudaMalloc(&d_outa, CLASSES*sizeof(float));
     
+    cudaMalloc(&d_max, sizeof(float));
     //cudaMalloc(&d_loss, sizeof(float));
 
     cudaMemcpy(d_train_data, train_data, NUM_TRAIN*SIZE*sizeof(float), cudaMemcpyHostToDevice);
@@ -105,6 +108,7 @@ void train_model(MODEL* model){
 
     for (int epoch=0; epoch<EPOCHS; epoch++) {
         //cudaMemset(d_loss, 0, sizeof(float));
+        cudaMemset(d_max, 0, sizeof(float));
         for (int n=0; n<NUM_TRAIN; n++) {
             // ---------- Forward ----------
 
@@ -113,6 +117,11 @@ void train_model(MODEL* model){
             vectorMatrixMultH2<<<1, H2>>>(d_h1a, d_W2, d_b2, d_h2, d_h2a);
 
             vectorMatrixMultOut<<<1, CLASSES>>>(d_h2a, d_W3, d_b3, d_out, d_outa);
+
+            findMax<<<1, CLASSES>>>(d_out, d_max);
+            cudaDeviceSynchronize();
+
+            kernelSoftMax<<<1, CLASSES>>>(d_out, d_outa, d_max);
             
             // ---------- Loss ----------
 

@@ -14,6 +14,25 @@ __host__ __device__ float relu(float x) { return x > 0 ? x : 0; }
 
 __host__ __device__ float drelu(float y) { return y > 0 ? 1 : 0; }
 
+__global__ void findMax(float* d_vec, float* d_max) {
+    int j = threadIdx.x;
+    if (j >= CLASSES) return;
+    float max = d_vec[0];
+    __syncthreads();
+    if (d_vec[j]>max) max=d_vec[j];
+    __syncthreads();
+    d_max = &max;
+}
+
+__global__ void kernelSoftMax(float* d_out, float* d_outa, float* d_max) {
+    int j = threadIdx.x;
+    if (j >= CLASSES) return;
+    float sum=0;
+    d_outa[j]=expf(d_out[j]-d_max);
+    atomicAdd(sum, d_outa[j]);
+    d_outa[j]/=sum;
+}
+
 __global__ void vectorMatrixMultH1(float* d_train_data, float* d_W1, float* d_b1, float* d_h1, float* d_h1a, int n) {
     int j = threadIdx.x;
     if (j >= H1) return;
