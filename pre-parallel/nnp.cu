@@ -81,7 +81,7 @@ void train_model(MODEL* model){
 	float* d_delta1, *d_delta2, *d_delta3;
 	float* d_h1, *d_h1a, *d_h2, *d_h2a;
     float* d_out, *d_outa;
-    float* d_loss;
+    //float* d_loss;
     
 	cudaMalloc(&d_W1, SIZE*H1*sizeof(float)); cudaMalloc(&d_b1, H1*sizeof(float));
 	cudaMalloc(&d_W2, H1*H2*sizeof(float)); cudaMalloc(&d_b2, H2*sizeof(float));
@@ -95,7 +95,7 @@ void train_model(MODEL* model){
     cudaMalloc(&d_h2, H2*sizeof(float)); cudaMalloc(&d_h2a, H2*sizeof(float));
     cudaMalloc(&d_out, CLASSES*sizeof(float)); cudaMalloc(&d_outa, CLASSES*sizeof(float));
     
-    cudaMalloc(&d_loss, sizeof(float));
+    //cudaMalloc(&d_loss, sizeof(float));
 
     cudaMemcpy(d_train_data, train_data, NUM_TRAIN*SIZE*sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(d_train_label, train_label, NUM_TRAIN*CLASSES*sizeof(float), cudaMemcpyHostToDevice);
@@ -104,7 +104,7 @@ void train_model(MODEL* model){
     cudaMemcpy(d_W3, model->W3, H2*CLASSES*sizeof(float), cudaMemcpyHostToDevice); cudaMemcpy(d_b3, model->b3, CLASSES*sizeof(float), cudaMemcpyHostToDevice);
 
     for (int epoch=0; epoch<EPOCHS; epoch++) {
-        cudaMemset(d_loss, 0, sizeof(float));
+        //cudaMemset(d_loss, 0, sizeof(float));
         for (int n=0; n<NUM_TRAIN; n++) {
             // ---------- Forward ----------
 
@@ -116,7 +116,7 @@ void train_model(MODEL* model){
             
             // ---------- Loss ----------
 
-            sumSubLoss<<<1, CLASSES>>>(d_train_label, d_outa, d_loss, n);
+            //sumSubLoss<<<1, CLASSES>>>(d_train_label, d_outa, d_loss, n);
 
             // ---------- Backprop ----------
 
@@ -135,9 +135,9 @@ void train_model(MODEL* model){
             vectorMatrixMultB1<<<1, SIZE>>>(d_W1, d_delta1, d_train_data, d_b1, n);          
         }
         cudaDeviceSynchronize();
-        float loss = 0;
-        cudaMemcpy(&loss, d_loss, sizeof(float), cudaMemcpyDeviceToHost);
-        printf("Epoch %d, Loss=%.4f\n", epoch, loss/NUM_TRAIN);
+        //float loss = 0;
+        //cudaMemcpy(&loss, d_loss, sizeof(float), cudaMemcpyDeviceToHost);
+        printf("Epoch %d, \n",/*Loss=%.4f*/ epoch /*loss/NUM_TRAIN*/);
         fflush(stdout);
     }
 
@@ -151,7 +151,8 @@ void train_model(MODEL* model){
     cudaFree(d_train_data); cudaFree(d_train_label);
     cudaFree(d_delta1); cudaFree(d_delta2); cudaFree(d_delta3);
     cudaFree(d_h1); cudaFree(d_h1a); cudaFree(d_h2); cudaFree(d_h2a);
-    cudaFree(d_out); cudaFree(d_outa); cudaFree(d_loss);
+    cudaFree(d_out); cudaFree(d_outa); 
+    //cudaFree(d_loss);
 }   
 
 /* Save the trained model to a binary file
