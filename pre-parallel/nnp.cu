@@ -1,6 +1,7 @@
 /*
     nnp.cu
-
+	Jacob Gordon
+    Tristan Dendorfer
     Created on: Nov 9, 2025
     Serial implementation of a simple feedforward neural network for MNIST digit classification.
 
