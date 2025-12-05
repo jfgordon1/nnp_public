@@ -1,5 +1,7 @@
 /* nnp.h
  *
+ *  Jacob Gordon
+ *  Tristan Dendorfer
  *  Created on: Nov 9, 2025
  *  
  *  Header file for neural network model and training functions
