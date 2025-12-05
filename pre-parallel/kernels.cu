@@ -29,7 +29,8 @@ __global__ void kernelSoftMax(float* d_out, float* d_outa, float* d_max) {
     if (j >= CLASSES) return;
     float sum=0;
     d_outa[j]=expf(d_out[j]-d_max);
-    atomicAdd(sum, d_outa[j]);
+    sum += d_outa[j];
+    __syncthreads();
     d_outa[j]/=sum;
 }
 
@@ -61,16 +62,6 @@ __global__ void vectorMatrixMultOut(float* d_h2a, float* d_W3, float* d_b3, floa
     for (int i=0; i<H2; i++) temp+=d_h2a[i]*d_W3[i*CLASSES+j];
     d_out[j]=temp;
     __syncthreads();
-    if (j == 0) {
-        float maxv = d_out[0];
-        for (int i = 1; i < CLASSES; i++) if (d_out[i] > maxv) maxv = d_out[i];
-        float total = 0;
-        for (int i = 0; i < CLASSES; i++) {
-            d_outa[i] = expf(d_out[i] - maxv);
-            total += d_outa[i];
-        }
-        for (int i = 0; i < CLASSES; i++) d_outa[i] /= total;
-    }
 }
 
 __global__ void sumSubLoss(float* d_train_label, float* d_outa, float* d_loss, int n) {
